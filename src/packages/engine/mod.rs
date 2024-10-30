@@ -316,7 +316,7 @@ impl<'lua> PackagesEngine<'lua> {
             tracing::trace!(resource_table = format!("{resource_table:#?}"), "Evaluating lua module");
 
             let value = module.set_environment(env)
-                .call::<_, LuaTable>(())?;
+                .call::<_, LuaValue>(())?;
 
             resource_table.set("value", value)?;
         }
