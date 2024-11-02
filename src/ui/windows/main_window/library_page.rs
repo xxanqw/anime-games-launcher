@@ -20,8 +20,16 @@ use super::DownloadsPageApp;
 pub enum SyncGameCommand {
     GetEditions(OneshotSender<Result<Vec<GameEdition>, LuaError>>),
     // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>),
-    GetStatus(OneshotSender<Result<InstallationStatus, LuaError>>),
-    GetLaunchInfo(OneshotSender<Result<GameLaunchInfo, LuaError>>)
+
+    GetStatus {
+        edition: String,
+        listener: OneshotSender<Result<InstallationStatus, LuaError>>
+    },
+
+    GetLaunchInfo {
+        edition: String,
+        listener: OneshotSender<Result<GameLaunchInfo, LuaError>>
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -316,12 +324,12 @@ impl SimpleAsyncComponent for LibraryPage {
                                                 let _ = listener.send(game.editions());
                                             }
 
-                                            SyncGameCommand::GetStatus(listener) => {
-                                                let _ = listener.send(game.game_status());
+                                            SyncGameCommand::GetStatus { edition, listener } => {
+                                                let _ = listener.send(game.game_status(edition));
                                             }
 
-                                            SyncGameCommand::GetLaunchInfo(listener) => {
-                                                let _ = listener.send(game.game_launch_info());
+                                            SyncGameCommand::GetLaunchInfo { edition, listener } => {
+                                                let _ = listener.send(game.game_launch_info(edition));
                                             }
                                         }
                                     }

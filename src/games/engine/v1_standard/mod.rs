@@ -73,14 +73,14 @@ impl<'lua> GameIntegration<'lua> {
     }
 
     /// Get status of the game installation.
-    pub fn game_status(&self) -> Result<InstallationStatus, LuaError> {
-        self.game_get_status.call::<_, LuaString>(())
+    pub fn game_status(&self, edition: impl AsRef<str>) -> Result<InstallationStatus, LuaError> {
+        self.game_get_status.call::<_, LuaString>(edition.as_ref())
             .and_then(|status| InstallationStatus::from_str(&status.to_string_lossy()))
     }
 
     /// Get installation diff.
-    pub fn game_diff(&self) -> Result<Option<InstallationDiff>, LuaError> {
-        self.game_get_diff.call::<_, Option<LuaTable>>(())
+    pub fn game_diff(&self, edition: impl AsRef<str>) -> Result<Option<InstallationDiff>, LuaError> {
+        self.game_get_diff.call::<_, Option<LuaTable>>(edition.as_ref())
             .and_then(|diff| {
                 diff.map(|diff| InstallationDiff::from_lua(self.lua, &diff))
                     .transpose()
@@ -88,8 +88,8 @@ impl<'lua> GameIntegration<'lua> {
     }
 
     /// Get params used to launch the game.
-    pub fn game_launch_info(&self) -> Result<GameLaunchInfo, LuaError> {
-        self.game_get_launch_info.call::<_, LuaTable>(())
+    pub fn game_launch_info(&self, edition: impl AsRef<str>) -> Result<GameLaunchInfo, LuaError> {
+        self.game_get_launch_info.call::<_, LuaTable>(edition.as_ref())
             .and_then(|info| GameLaunchInfo::try_from(&info))
     }
 }

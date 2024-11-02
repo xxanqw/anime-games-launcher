@@ -162,7 +162,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 // Little trolling. I think you can sorry me.
                 let date = time::OffsetDateTime::now_utc();
 
-                let image = if (date.month() == time::Month::April && date.day() == 1) || (date.hour() == 19 && date.minute() == 17) {
+                let image = if date.month() == time::Month::April && date.day() == 1 {
                     tracing::info!("＜( ￣︿￣)");
 
                     ImagePath::resource("images/april-fools.jpg")
@@ -175,7 +175,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 tokio::spawn(async move {
                     let (send, recv) = tokio::sync::oneshot::channel();
 
-                    if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo(send)) {
+                    if let Err(err) = listener.send(SyncGameCommand::GetLaunchInfo { edition: edition.name, listener: send }) {
                         tracing::error!(?err, "Failed to request game launch info");
 
                         return;

@@ -44,25 +44,25 @@ impl<'lua> GameEngine<'lua> {
 
     #[inline]
     /// Get status of the game installation.
-    pub fn game_status(&self) -> Result<InstallationStatus, LuaError> {
+    pub fn game_status(&self, edition: impl AsRef<str>) -> Result<InstallationStatus, LuaError> {
         match self {
-            Self::V1(engine) => engine.game_status()
+            Self::V1(engine) => engine.game_status(edition)
         }
     }
 
     #[inline]
     /// Get installation diff.
-    pub fn game_diff(&self) -> Result<Option<InstallationDiff>, LuaError> {
+    pub fn game_diff(&self, edition: impl AsRef<str>) -> Result<Option<InstallationDiff>, LuaError> {
         match self {
-            Self::V1(engine) => engine.game_diff()
+            Self::V1(engine) => engine.game_diff(edition)
         }
     }
 
     #[inline]
     /// Get params used to launch the game.
-    pub fn game_launch_info(&self) -> Result<GameLaunchInfo, LuaError> {
+    pub fn game_launch_info(&self, edition: impl AsRef<str>) -> Result<GameLaunchInfo, LuaError> {
         match self {
-            Self::V1(engine) => engine.game_launch_info()
+            Self::V1(engine) => engine.game_launch_info(edition)
         }
     }
 }
