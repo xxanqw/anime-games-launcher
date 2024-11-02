@@ -128,14 +128,14 @@ impl<'lua> PathAPI<'lua> {
                 }
             })?,
 
-            path_join: lua.create_function(|lua, parts: Vec<LuaString>| {
+            path_join: lua.create_function(|lua, parts: LuaMultiValue| {
                 if parts.is_empty() {
                     return Ok(LuaNil);
                 }
 
                 let parts = parts.iter()
+                    .flat_map(|part| part.to_string())
                     .filter(|part| !part.as_bytes().is_empty())
-                    .map(LuaString::to_string_lossy)
                     .collect::<Vec<_>>();
 
                 let (parts, is_absolute) = match parts.first() {
