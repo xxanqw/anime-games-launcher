@@ -264,7 +264,7 @@ impl<'lua> PackagesEngine<'lua> {
                                             };
 
                                             // Read value of the resource.
-                                            let value = resource.get::<_, LuaTable>("value")?;
+                                            let value = resource.get::<_, LuaValue>("value")?;
 
                                             // If it's a package - then we have to pre-process its value.
                                             if format != PackageResourceFormat::Package {
@@ -282,11 +282,18 @@ impl<'lua> PackagesEngine<'lua> {
                                             for pair in outputs.pairs::<LuaValue, u32>() {
                                                 let (name, key) = pair?;
 
-                                                filtered_outputs.set(name, resources_table.get::<_, LuaTable>(key)?)?;
+                                                // Read the output resource.
+                                                let resource = resources_table.get::<_, LuaTable>(key)?;
+
+                                                // Read value of the resource.
+                                                let value = resource.get::<_, LuaValue>("value")?;
+
+                                                // Insert raw value of the output resource.
+                                                filtered_outputs.set(name, value)?;
                                             }
 
                                             // Return filtered package table.
-                                            return Ok(filtered_outputs);
+                                            return Ok(LuaValue::Table(filtered_outputs));
                                         }
                                     }
 
