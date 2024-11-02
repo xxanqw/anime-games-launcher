@@ -158,10 +158,14 @@ impl<'lua> PackagesEngine<'lua> {
                     match standard {
                         PackageResourceModuleStandard::Auto |
                         PackageResourceModuleStandard::V1 => {
+                            tracing::trace!("Indexing resource {key} with parent context {parent_context:?}");
+
                             {
                                 let engine_registry = engine_registry.clone();
 
                                 env.set("load", lua.create_function(move |lua, name: String| {
+                                    tracing::trace!(?name, ?parent_context, "Loading package input");
+
                                     // Read the parent package if it exists (must be at this point).
                                     if let Some(parent_context) = parent_context {
                                         let engine_table: LuaTable = lua.registry_value(&engine_registry)?;
@@ -231,6 +235,8 @@ impl<'lua> PackagesEngine<'lua> {
                                 let engine_registry = engine_registry.clone();
 
                                 env.set("import", lua.create_function(move |lua, name: String| {
+                                    tracing::trace!(?name, ?parent_context, "Importing package input");
+
                                     // Read the parent package if it exists (must be at this point).
                                     if let Some(parent_context) = parent_context {
                                         let engine_table: LuaTable = lua.registry_value(&engine_registry)?;
