@@ -3,16 +3,16 @@ name: Check source code
 on:
   push:
     branches:
-      - "master"
-      - "next"
+      - master
+      - next
 
     paths:
       - "src/**"
 
   pull_request:
     branches:
-      - "master"
-      - "next"
+      - master
+      - next
 
     paths:
       - "src/**"
@@ -40,3 +40,6 @@ jobs:
 
       - name: Check source code
         run: nix develop --command cargo check --verbose
+
+      - name: Perform source code tests
+        run: nix develop --command cargo test --verbose
