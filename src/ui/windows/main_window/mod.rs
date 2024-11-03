@@ -8,15 +8,17 @@ use serde_json::Value as Json;
 
 use crate::prelude::*;
 
-pub mod downloads_page;
+// pub mod downloads_page;
 pub mod library_page;
 pub mod profile_page;
 pub mod store_page;
 
-use downloads_page::*;
+// use downloads_page::*;
 use library_page::*;
 use profile_page::*;
 use store_page::*;
+
+pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -76,7 +78,7 @@ impl SimpleAsyncComponent for MainWindow {
             set_size_request: (1200, 800),
             set_hide_on_close: false,
 
-            add_css_class?: crate::APP_DEBUG.then_some("devel"),
+            add_css_class?: APP_DEBUG.then_some("devel"),
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -229,6 +231,10 @@ impl SimpleAsyncComponent for MainWindow {
         let view_stack = &model.view_stack;
 
         let widgets = view_output!();
+
+        unsafe {
+            WINDOW = Some(widgets.window.clone());
+        }
 
         // TODO: errors handling
         tokio::spawn(async move {
@@ -500,7 +506,7 @@ impl SimpleAsyncComponent for MainWindow {
                 if let Some(name) = self.view_stack.visible_child_name() {
                     match name.as_str() {
                         "store"   => self.store_page.emit(StorePageInput::HideGamePage),
-                        "library" => self.library_page.emit(LibraryPageInput::ToggleDownloadsPage),
+                        // "library" => self.library_page.emit(LibraryPageInput::ToggleDownloadsPage),
 
                         _ => ()
                     }

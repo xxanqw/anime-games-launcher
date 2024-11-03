@@ -14,8 +14,6 @@ use unic_langid::LanguageIdentifier;
 use crate::prelude::*;
 use crate::ui::components::*;
 
-use super::DownloadsPageApp;
-
 pub type SyncGamePipelineEntryHandler = Box<dyn FnMut(SyncGamePipelineAction) -> SyncGamePipelineActionHandlers + Send + Sync>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,9 +81,7 @@ pub enum LibraryPageInput {
     ShowGameDetails {
         game: DynamicIndex,
         variant: Option<DynamicIndex>
-    },
-
-    ToggleDownloadsPage
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,13 +92,11 @@ pub enum LibraryPageOutput {
 pub struct LibraryPage {
     cards_list: AsyncFactoryVecDeque<CardsList>,
     game_details: AsyncController<GameLibraryDetails>,
-    active_download: AsyncController<DownloadsRow>,
-    downloads_page: AsyncController<DownloadsPageApp>,
+
+    download_manager: AsyncController<DownloadManagerWindow>,
 
     #[allow(clippy::type_complexity)]
-    games: Vec<(String, Arc<GameManifest>, Vec<GameEdition>, UnboundedSender<SyncGameCommand>)>,
-
-    show_downloads: bool
+    games: Vec<(String, Arc<GameManifest>, Vec<GameEdition>, UnboundedSender<SyncGameCommand>)>
 }
 
 #[relm4::component(pub, async)]
@@ -116,57 +110,34 @@ impl SimpleAsyncComponent for LibraryPage {
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
 
-            #[transition(SlideLeftRight)]
-            append = if !model.show_downloads {
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
+            adw::NavigationSplitView {
+                set_vexpand: true,
+                set_hexpand: true,
 
-                    adw::NavigationSplitView {
-                        set_vexpand: true,
-                        set_hexpand: true,
+                #[wrap(Some)]
+                set_sidebar = &adw::NavigationPage {
+                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
+                    set_title: "Games",
 
-                        #[wrap(Some)]
-                        set_sidebar = &adw::NavigationPage {
-                            // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
-                            set_title: "Games",
+                    #[wrap(Some)]
+                    set_child = model.cards_list.widget() {
+                        add_css_class: "navigation-sidebar",
 
-                            #[wrap(Some)]
-                            set_child = model.cards_list.widget() {
-                                add_css_class: "navigation-sidebar",
-
-                                connect_row_activated[sender] => move |_, row| {
-                                    sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
-                                }
-                            }
-                        },
-
-                        #[wrap(Some)]
-                        set_content = &adw::NavigationPage {
-                            set_hexpand: true,
-
-                            // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
-                            set_title: "Details",
-
-                            #[wrap(Some)]
-                            set_child = model.game_details.widget(),
+                        connect_row_activated[sender] => move |_, row| {
+                            sender.input(LibraryPageInput::GameRowSelected(row.index() as usize));
                         }
-                    },
+                    }
+                },
 
-                    // adw::PreferencesPage {
-                    //     adw::PreferencesGroup {
-                    //         model.active_download.widget() {
-                    //             set_width_request: 1000,
+                #[wrap(Some)]
+                set_content = &adw::NavigationPage {
+                    set_hexpand: true,
 
-                    //             set_activatable: true,
+                    // Supress Adwaita-WARNING **: AdwNavigationPage is missing a title
+                    set_title: "Details",
 
-                    //             connect_activated => LibraryPageInput::ToggleDownloadsPage
-                    //         }
-                    //     }
-                    // }
-                }
-            } else {
-                gtk::Box {
-                    model.downloads_page.widget(),
+                    #[wrap(Some)]
+                    set_child = model.game_details.widget(),
                 }
             }
         }
@@ -188,24 +159,11 @@ impl SimpleAsyncComponent for LibraryPage {
                 .launch(())
                 .detach(),
 
-            active_download: DownloadsRow::builder()
-                .launch(DownloadsRowInit::new(
-                    "123",
-                    String::from("Punishing: Gray Raven"),
-                    String::from("69.42.0"),
-                    String::from("Global"),
-                    696969696969,
-                    true,
-                ))
-                .detach(),
-
-            downloads_page: DownloadsPageApp::builder()
+            download_manager: DownloadManagerWindow::builder()
                 .launch(())
                 .detach(),
 
-            games: Vec::new(),
-
-            show_downloads: false
+            games: Vec::new()
         };
 
         model.cards_list.widget().connect_row_selected(|_, row| {
@@ -568,6 +526,8 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 self.cards_list.broadcast(CardsListInput::HideVariantsExcept(game.clone()));
 
+                self.download_manager.emit(DownloadManagerWindowMsg::Show);
+
                 // TODO: proper errors handling
                 let Some((_, manifest, editions, listener)) = self.games.get(game.current_index()) else {
                     tracing::error!(
@@ -599,10 +559,6 @@ impl SimpleAsyncComponent for LibraryPage {
                     edition,
                     listener: listener.clone()
                 });
-            }
-
-            LibraryPageInput::ToggleDownloadsPage => {
-                self.show_downloads = !self.show_downloads;
             }
 
             LibraryPageInput::Activate => {
