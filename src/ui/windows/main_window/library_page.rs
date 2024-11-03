@@ -13,29 +13,7 @@ use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 use crate::ui::components::*;
-
-pub type SyncGamePipelineEntryHandler = Box<dyn FnMut(SyncGamePipelineAction) -> SyncGamePipelineActionHandlers + Send + Sync>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyncGamePipelineAction {
-    pub diff_title: Option<LocalizableString>,
-    pub diff_description: Option<LocalizableString>,
-    pub action_title: LocalizableString,
-    pub action_description: Option<LocalizableString>
-}
-
-pub struct SyncGamePipelineActionHandlers {
-    pub before: Box<dyn Fn(SyncGamePipelineProgressReport) -> bool>,
-    pub perform: Box<dyn Fn(SyncGamePipelineProgressReport)>,
-    pub after: Box<dyn Fn(SyncGamePipelineProgressReport) -> bool>
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SyncGamePipelineProgressReport {
-    pub title: Option<LocalizableString>,
-    pub description: Option<LocalizableString>,
-    pub progress: LocalizableString
-}
+use crate::ui::windows::download_manager::PipelineActionProgressReport;
 
 pub enum SyncGameCommand {
     /// Get list of available game editions.
@@ -57,8 +35,7 @@ pub enum SyncGameCommand {
     /// Start game diff pipeline execution. This can be
     /// update downloading or full game installation.
     StartDiffPipeline {
-        edition: String,
-        handler: SyncGamePipelineEntryHandler
+        edition: String
     }
 }
 
@@ -186,6 +163,8 @@ impl SimpleAsyncComponent for LibraryPage {
 
                 self.games.clear();
                 self.cards_list.guard().clear();
+
+                let download_manager_sender = self.download_manager.sender().clone();
 
                 std::thread::spawn(move || {
                     let lua = Lua::new();
@@ -323,22 +302,38 @@ impl SimpleAsyncComponent for LibraryPage {
                                             }
 
                                             // TODO: handle errors
-                                            SyncGameCommand::StartDiffPipeline { edition, mut handler } => {
+                                            SyncGameCommand::StartDiffPipeline { edition } => {
                                                 match game.game_diff(edition) {
                                                     Ok(Some(diff)) => {
+                                                        download_manager_sender.emit(DownloadManagerWindowMsg::Show);
+
                                                         // Iterate over actions of the pipeline.
                                                         for action in diff.pipeline() {
                                                             // Get list of handlers for this action.
-                                                            let handlers = handler(SyncGamePipelineAction {
-                                                                diff_title: diff.title().cloned(),
+                                                            let (sender, listener) = flume::bounded(1);
+
+                                                            download_manager_sender.emit(DownloadManagerWindowMsg::PrepareAction {
+                                                                diff_title: diff.title().clone(),
                                                                 diff_description: diff.description().cloned(),
+
                                                                 action_title: action.title().clone(),
-                                                                action_description: action.description().cloned()
+                                                                action_description: action.description().cloned(),
+
+                                                                handlers_listener: sender
                                                             });
+
+                                                            let handlers = match listener.recv() {
+                                                                Ok(handlers) => handlers,
+                                                                Err(err) => {
+                                                                    tracing::error!(?err, "Failed to get pipeline action handlers");
+
+                                                                    break;
+                                                                }
+                                                            };
 
                                                             // Process the hook before action execution.
                                                             let result = action.before(move |progress: ProgressReport| {
-                                                                (handlers.before)(SyncGamePipelineProgressReport {
+                                                                (handlers.before)(PipelineActionProgressReport {
                                                                     progress: if let Ok(Some(progress)) = progress.format() {
                                                                         progress
                                                                     } else {
@@ -355,7 +350,7 @@ impl SimpleAsyncComponent for LibraryPage {
                                                                 Ok(Some(true)) | Ok(None) => {
                                                                     // Perform the action.
                                                                     let result = action.perform(move |progress: ProgressReport| {
-                                                                        (handlers.perform)(SyncGamePipelineProgressReport {
+                                                                        (handlers.perform)(PipelineActionProgressReport {
                                                                             progress: if let Ok(Some(progress)) = progress.format() {
                                                                                 progress
                                                                             } else {
@@ -380,7 +375,7 @@ impl SimpleAsyncComponent for LibraryPage {
 
                                                                     // Process the hook after action execution.
                                                                     let result = action.after(move |progress: ProgressReport| {
-                                                                        (handlers.after)(SyncGamePipelineProgressReport {
+                                                                        (handlers.after)(PipelineActionProgressReport {
                                                                             progress: if let Ok(Some(progress)) = progress.format() {
                                                                                 progress
                                                                             } else {
@@ -437,6 +432,8 @@ impl SimpleAsyncComponent for LibraryPage {
                                                                 }
                                                             }
                                                         }
+
+                                                        download_manager_sender.emit(DownloadManagerWindowMsg::Hide);
                                                     }
 
                                                     Ok(None) => tracing::info!("Game diff is not available"),
@@ -525,8 +522,6 @@ impl SimpleAsyncComponent for LibraryPage {
                 // FIXME: don't update details page if it's already open for the given game.
 
                 self.cards_list.broadcast(CardsListInput::HideVariantsExcept(game.clone()));
-
-                self.download_manager.emit(DownloadManagerWindowMsg::Show);
 
                 // TODO: proper errors handling
                 let Some((_, manifest, editions, listener)) = self.games.get(game.current_index()) else {

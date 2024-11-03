@@ -25,7 +25,13 @@ impl<'lua> PipelineAction<'lua> {
                 .and_then(|title| LocalizableString::try_from(&title))?,
 
             description: table.get::<_, LuaValue>("description")
-                .map(|desc| LocalizableString::try_from(&desc).map(Some))
+                .map(|desc| {
+                    if desc.is_nil() || desc.is_null() {
+                        Ok(None)
+                    } else {
+                        LocalizableString::try_from(&desc).map(Some)
+                    }
+                })
                 .unwrap_or(Ok(None))?,
 
             before: table.get::<_, LuaFunction>("before").ok(),

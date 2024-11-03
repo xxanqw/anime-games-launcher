@@ -1,19 +1,57 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
+use unic_langid::LanguageIdentifier;
+
 use crate::prelude::*;
 
 static mut WINDOW: Option<adw::Window> = None;
 
-#[derive(Debug)]
-pub struct DownloadManagerWindow {
-    graph: AsyncController<Graph>
+pub struct PipelineActionHandlers {
+    pub before: Box<dyn Fn(PipelineActionProgressReport) -> bool + Send + Sync>,
+    pub perform: Box<dyn Fn(PipelineActionProgressReport) + Send + Sync>,
+    pub after: Box<dyn Fn(PipelineActionProgressReport) -> bool + Send + Sync>
 }
 
-#[derive(Debug, Clone)]
+impl std::fmt::Debug for PipelineActionHandlers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PipelineActionHandlers").finish()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PipelineActionProgressReport {
+    pub title: Option<LocalizableString>,
+    pub description: Option<LocalizableString>,
+    pub progress: LocalizableString
+}
+
+#[derive(Debug)]
+pub struct DownloadManagerWindow {
+    graph: AsyncController<Graph>,
+
+    diff_title: Option<String>,
+    diff_description: Option<String>,
+
+    action_title: Option<String>,
+    action_description: Option<String>
+}
+
+#[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum DownloadManagerWindowMsg {
     Show,
-    Hide
+    Hide,
+
+    PrepareAction {
+        diff_title: LocalizableString,
+        diff_description: Option<LocalizableString>,
+
+        action_title: LocalizableString,
+        action_description: Option<LocalizableString>,
+
+        handlers_listener: flume::Sender<PipelineActionHandlers>
+    }
 }
 
 #[relm4::component(pub, async)]
@@ -37,6 +75,24 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
 
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
+
+                    gtk::Label {
+                        add_css_class: "title-1",
+
+                        #[watch]
+                        set_label?: model.diff_title.as_deref(),
+
+                        #[watch]
+                        set_tooltip?: model.diff_description.as_deref()
+                    },
+
+                    gtk::Label {
+                        #[watch]
+                        set_label?: model.action_title.as_deref(),
+
+                        #[watch]
+                        set_tooltip?: model.action_description.as_deref()
+                    },
 
                     model.graph.widget(),
                 }
@@ -113,7 +169,13 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
                     window_size: 200,
                     color: (1.0, 0.0, 0.0)
                 })
-                .detach()
+                .detach(),
+
+            diff_title: None,
+            diff_description: None,
+
+            action_title: None,
+            action_description: None
         };
 
         let widgets = view_output!();
@@ -142,6 +204,69 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
             DownloadManagerWindowMsg::Hide => unsafe {
                 if let Some(window) = WINDOW.as_ref() {
                     window.close();
+                }
+            }
+
+            DownloadManagerWindowMsg::PrepareAction {
+                diff_title,
+                diff_description,
+                action_title,
+                action_description,
+                handlers_listener
+            } => {
+                let config = config::get();
+
+                let lang = config.general.language.parse::<LanguageIdentifier>();
+
+                self.diff_title = match &lang {
+                    Ok(lang) => Some(diff_title.translate(lang).to_string()),
+                    Err(_) => Some(diff_title.default_translation().to_string())
+                };
+
+                self.diff_description = match diff_description {
+                    Some(diff_description) => match &lang {
+                        Ok(lang) => Some(diff_description.translate(lang).to_string()),
+                        Err(_) => Some(diff_description.default_translation().to_string())
+                    },
+
+                    None => None
+                };
+
+                self.action_title = match &lang {
+                    Ok(lang) => Some(action_title.translate(lang).to_string()),
+                    Err(_) => Some(action_title.default_translation().to_string())
+                };
+
+                self.action_description = match action_description {
+                    Some(action_description) => match &lang {
+                        Ok(lang) => Some(action_description.translate(lang).to_string()),
+                        Err(_) => Some(action_description.default_translation().to_string())
+                    },
+
+                    None => None
+                };
+
+                // TODO: handle errors
+                let result = handlers_listener.send(PipelineActionHandlers {
+                    before: Box::new(|progress| {
+                        dbg!(progress);
+
+                        true
+                    }),
+
+                    perform: Box::new(|progress| {
+                        dbg!(progress);
+                    }),
+
+                    after: Box::new(|progress| {
+                        dbg!(progress);
+
+                        true
+                    })
+                });
+
+                if let Err(err) = result {
+                    tracing::error!(?err, "Failed to send pipeline action handlers");
                 }
             }
         }

@@ -20,7 +20,9 @@ pub enum GameLibraryDetailsMsg {
     },
 
     SetGameInstallationStatus(InstallationStatus),
-    SetGameLaunchInfo(GameLaunchInfo)
+    SetGameLaunchInfo(GameLaunchInfo),
+
+    EmitInstallDiff
 }
 
 #[derive(Debug)]
@@ -30,12 +32,13 @@ pub struct GameLibraryDetails {
 
     listener: Option<UnboundedSender<SyncGameCommand>>,
 
-    title: String,
-    developer: String,
-    publisher: String,
+    title: Option<String>,
+    developer: Option<String>,
+    publisher: Option<String>,
 
-    status: InstallationStatus,
-    launch_info: GameLaunchInfo
+    edition: Option<GameEdition>,
+    status: Option<InstallationStatus>,
+    launch_info: Option<GameLaunchInfo>
 }
 
 #[relm4::component(pub, async)]
@@ -58,7 +61,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     add_css_class: "title-1",
 
                     #[watch]
-                    set_label: &model.title
+                    set_label?: model.title.as_deref()
                 },
 
                 model.background.widget() {
@@ -73,31 +76,43 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     // Play button
                     gtk::Button {
                         #[watch]
-                        set_css_classes: match model.launch_info.status {
-                            GameLaunchStatus::Normal    => &["pill", "suggested-action"],
-                            GameLaunchStatus::Warning   => &["pill", "warning-action"],
-                            GameLaunchStatus::Dangerous => &["pill", "destructive-action"],
-                            GameLaunchStatus::Disabled  => &["pill"]
-                        },
-
-                        #[watch]
-                        set_visible: [InstallationStatus::Installed, InstallationStatus::UpdateAvailable].contains(&model.status),
-
-                        #[watch]
-                        set_sensitive: model.launch_info.status != GameLaunchStatus::Disabled,
-
-                        #[watch]
-                        set_tooltip?: model.launch_info.hint.as_ref()
-                            .map(|hint| {
-                                // FIXME: IO-heavy thing (there's around 6 update calls each time)
-                                let config = config::get();
-
-                                let lang = config.general.language.parse::<LanguageIdentifier>();
-
-                                match &lang {
-                                    Ok(lang) => hint.translate(lang),
-                                    Err(_) => hint.default_translation()
+                        set_css_classes?: model.launch_info.as_ref()
+                            .map(|launch_info| {
+                                match launch_info.status {
+                                    GameLaunchStatus::Normal    => &["pill", "suggested-action"],
+                                    GameLaunchStatus::Warning   => &["pill", "warning-action"],
+                                    GameLaunchStatus::Dangerous => &["pill", "destructive-action"],
+                                    GameLaunchStatus::Disabled  => &["pill", ""]
                                 }
+                            }),
+
+                        #[watch]
+                        set_visible: model.status.as_ref()
+                            .map(|status| {
+                                [InstallationStatus::Installed, InstallationStatus::UpdateAvailable].contains(status)
+                            })
+                            .unwrap_or_default(),
+
+                        #[watch]
+                        set_sensitive?: model.launch_info.as_ref()
+                            .map(|launch_info| launch_info.status != GameLaunchStatus::Disabled),
+
+                        #[watch]
+                        set_tooltip?: model.launch_info.as_ref()
+                            .map(|launch_info| launch_info.hint.as_ref())
+                            .and_then(|hint| {
+                                hint.as_ref()
+                                    .map(|hint| {
+                                        // FIXME: IO-heavy thing (there's around 6 update calls each time)
+                                        let config = config::get();
+        
+                                        let lang = config.general.language.parse::<LanguageIdentifier>();
+        
+                                        match &lang {
+                                            Ok(lang) => hint.translate(lang),
+                                            Err(_) => hint.default_translation()
+                                        }
+                                    })
                             }),
 
                         adw::ButtonContent {
@@ -109,29 +124,31 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                     // Update / Install (execute diff) button
                     gtk::Button {
-                        add_css_class: "pill",
-                        add_css_class: "suggested-action",
+                        #[watch]
+                        set_css_classes?: model.status.as_ref()
+                            .map(|status| {
+                                if status == &InstallationStatus::UpdateAvailable {
+                                    &["pill", ""]
+                                } else {
+                                    &["pill", "suggested-action"]
+                                }
+                            }),
 
                         #[watch]
-                        set_css_classes: if model.status == InstallationStatus::UpdateAvailable {
-                            &["pill"]
-                        } else {
-                            &["pill", "suggested-action"]
-                        },
-
-                        #[watch]
-                        set_visible: model.status != InstallationStatus::Installed,
+                        set_visible: model.status != Some(InstallationStatus::Installed),
 
                         adw::ButtonContent {
                             set_icon_name: "document-save-symbolic",
 
                             #[watch]
-                            set_label: if model.status == InstallationStatus::NotInstalled {
+                            set_label: if model.status == Some(InstallationStatus::NotInstalled) {
                                 "Install"
                             } else {
                                 "Update"
                             }
-                        }
+                        },
+
+                        connect_clicked => GameLibraryDetailsMsg::EmitInstallDiff
                     }
                 }
             }
@@ -150,12 +167,13 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
             listener: None,
 
-            title: String::new(),
-            developer: String::new(),
-            publisher: String::new(),
+            title: None,
+            developer: None,
+            publisher: None,
 
-            status: InstallationStatus::NotInstalled,
-            launch_info: GameLaunchInfo::default()
+            edition: None,
+            status: None,
+            launch_info: None
         };
 
         let widgets = view_output!();
@@ -187,9 +205,10 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 self.listener = Some(listener.clone());
 
-                self.title = title.to_string();
-                self.developer = developer.to_string();
-                self.publisher = publisher.to_string();
+                self.title = Some(title.to_string());
+                self.developer = Some(developer.to_string());
+                self.publisher = Some(publisher.to_string());
+                self.edition = Some(edition.clone());
 
                 self.card.emit(CardComponentInput::SetImage(Some(ImagePath::lazy_load(&manifest.game.images.poster))));
 
@@ -253,8 +272,16 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 });
             }
 
-            GameLibraryDetailsMsg::SetGameInstallationStatus(status) => self.status = status,
-            GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = info
+            GameLibraryDetailsMsg::SetGameInstallationStatus(status) => self.status = Some(status),
+            GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = Some(info),
+
+            GameLibraryDetailsMsg::EmitInstallDiff => {
+                if let Some(listener) = &self.listener {
+                    if let Some(edition) = &self.edition {
+                        let _ = listener.send(SyncGameCommand::StartDiffPipeline { edition: edition.name.clone() });
+                    }
+                }
+            }
         }
     }
 }
