@@ -16,19 +16,51 @@ use crate::ui::components::*;
 
 use super::DownloadsPageApp;
 
-#[derive(Debug)]
+pub type SyncGamePipelineEntryHandler = Box<dyn FnMut(SyncGamePipelineAction) -> SyncGamePipelineActionHandlers + Send + Sync>;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyncGamePipelineAction {
+    pub diff_title: Option<LocalizableString>,
+    pub diff_description: Option<LocalizableString>,
+    pub action_title: LocalizableString,
+    pub action_description: Option<LocalizableString>
+}
+
+pub struct SyncGamePipelineActionHandlers {
+    pub before: Box<dyn Fn(SyncGamePipelineProgressReport) -> bool>,
+    pub perform: Box<dyn Fn(SyncGamePipelineProgressReport)>,
+    pub after: Box<dyn Fn(SyncGamePipelineProgressReport) -> bool>
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyncGamePipelineProgressReport {
+    pub title: Option<LocalizableString>,
+    pub description: Option<LocalizableString>,
+    pub progress: LocalizableString
+}
+
 pub enum SyncGameCommand {
+    /// Get list of available game editions.
     GetEditions(OneshotSender<Result<Vec<GameEdition>, LuaError>>),
     // GetComponents(OneshotSender<Vec<GameComponent<'lua>>>),
 
+    /// Get status of the game installation.
     GetStatus {
         edition: String,
         listener: OneshotSender<Result<InstallationStatus, LuaError>>
     },
 
+    /// Get information about the game launching.
     GetLaunchInfo {
         edition: String,
         listener: OneshotSender<Result<GameLaunchInfo, LuaError>>
+    },
+
+    /// Start game diff pipeline execution. This can be
+    /// update downloading or full game installation.
+    StartDiffPipeline {
+        edition: String,
+        handler: SyncGamePipelineEntryHandler
     }
 }
 
@@ -330,6 +362,128 @@ impl SimpleAsyncComponent for LibraryPage {
 
                                             SyncGameCommand::GetLaunchInfo { edition, listener } => {
                                                 let _ = listener.send(game.game_launch_info(edition));
+                                            }
+
+                                            // TODO: handle errors
+                                            SyncGameCommand::StartDiffPipeline { edition, mut handler } => {
+                                                match game.game_diff(edition) {
+                                                    Ok(Some(diff)) => {
+                                                        // Iterate over actions of the pipeline.
+                                                        for action in diff.pipeline() {
+                                                            // Get list of handlers for this action.
+                                                            let handlers = handler(SyncGamePipelineAction {
+                                                                diff_title: diff.title().cloned(),
+                                                                diff_description: diff.description().cloned(),
+                                                                action_title: action.title().clone(),
+                                                                action_description: action.description().cloned()
+                                                            });
+
+                                                            // Process the hook before action execution.
+                                                            let result = action.before(move |progress: ProgressReport| {
+                                                                (handlers.before)(SyncGamePipelineProgressReport {
+                                                                    progress: if let Ok(Some(progress)) = progress.format() {
+                                                                        progress
+                                                                    } else {
+                                                                        LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
+                                                                    },
+
+                                                                    title: progress.title,
+                                                                    description: progress.description
+                                                                })
+                                                            });
+
+                                                            // Check hook execution result, if it's `false` then skip the action.
+                                                            match result {
+                                                                Ok(Some(true)) | Ok(None) => {
+                                                                    // Perform the action.
+                                                                    let result = action.perform(move |progress: ProgressReport| {
+                                                                        (handlers.perform)(SyncGamePipelineProgressReport {
+                                                                            progress: if let Ok(Some(progress)) = progress.format() {
+                                                                                progress
+                                                                            } else {
+                                                                                LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
+                                                                            },
+        
+                                                                            title: progress.title,
+                                                                            description: progress.description
+                                                                        })
+                                                                    });
+
+                                                                    // Check the result of the action execution.
+                                                                    if let Err(err) = result {
+                                                                        tracing::error!(
+                                                                            title = action.title().default_translation(),
+                                                                            ?err,
+                                                                            "Failed to execute action"
+                                                                        );
+
+                                                                        break;
+                                                                    }
+
+                                                                    // Process the hook after action execution.
+                                                                    let result = action.after(move |progress: ProgressReport| {
+                                                                        (handlers.after)(SyncGamePipelineProgressReport {
+                                                                            progress: if let Ok(Some(progress)) = progress.format() {
+                                                                                progress
+                                                                            } else {
+                                                                                LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
+                                                                            },
+        
+                                                                            title: progress.title,
+                                                                            description: progress.description
+                                                                        })
+                                                                    });
+
+                                                                    // Check hook execution result, if it's `false` then skip all the following actions.
+                                                                    match result {
+                                                                        Ok(Some(true)) | Ok(None) => continue,
+
+                                                                        Ok(Some(false)) => {
+                                                                            tracing::debug!(
+                                                                                title = action.title().default_translation(),
+                                                                                "Diff pipeline skipped"
+                                                                            );
+
+                                                                            break;
+                                                                        }
+
+                                                                        Err(err) => {
+                                                                            tracing::error!(
+                                                                                title = action.title().default_translation(),
+                                                                                ?err,
+                                                                                "Failed to execute action's after hook"
+                                                                            );
+
+                                                                            break;
+                                                                        }
+                                                                    }
+                                                                }
+
+                                                                Ok(Some(false)) => {
+                                                                    tracing::debug!(
+                                                                        title = action.title().default_translation(),
+                                                                        "Diff pipeline action skipped"
+                                                                    );
+
+                                                                    continue;
+                                                                }
+
+                                                                Err(err) => {
+                                                                    tracing::error!(
+                                                                        title = action.title().default_translation(),
+                                                                        ?err,
+                                                                        "Failed to execute action's before hook"
+                                                                    );
+
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+
+                                                    Ok(None) => tracing::info!("Game diff is not available"),
+                                                    Err(err) => tracing::error!(?err, "Failed to get game diff")
+                                                }
                                             }
                                         }
                                     }

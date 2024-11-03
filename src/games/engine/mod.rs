@@ -8,7 +8,8 @@ pub use v1_standard::{
     GameLaunchStatus,
     GameLaunchInfo,
     InstallationStatus,
-    InstallationDiff
+    InstallationDiff,
+    ProgressReport
 };
 
 #[derive(Debug, Clone)]

@@ -17,6 +17,7 @@ pub mod prelude {
         GameLaunchStatus,
         GameLaunchInfo,
         InstallationStatus,
-        InstallationDiff
+        InstallationDiff,
+        ProgressReport
     };
 }
