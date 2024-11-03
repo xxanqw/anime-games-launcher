@@ -19,6 +19,7 @@ pub enum GameLibraryDetailsMsg {
         listener: UnboundedSender<SyncGameCommand>
     },
 
+    SetGameInstallationStatus(InstallationStatus),
     SetGameLaunchInfo(GameLaunchInfo)
 }
 
@@ -33,6 +34,7 @@ pub struct GameLibraryDetails {
     developer: String,
     publisher: String,
 
+    status: InstallationStatus,
     launch_info: GameLaunchInfo
 }
 
@@ -68,6 +70,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                     set_spacing: 12,
 
+                    // Play button
                     gtk::Button {
                         #[watch]
                         set_css_classes: match model.launch_info.status {
@@ -76,6 +79,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                             GameLaunchStatus::Dangerous => &["pill", "destructive-action"],
                             GameLaunchStatus::Disabled  => &["pill"]
                         },
+
+                        #[watch]
+                        set_visible: [InstallationStatus::Installed, InstallationStatus::UpdateAvailable].contains(&model.status),
 
                         #[watch]
                         set_sensitive: model.launch_info.status != GameLaunchStatus::Disabled,
@@ -99,6 +105,25 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                             set_label: "Play"
                         }
+                    },
+
+                    // Update / Install (execute diff) button
+                    gtk::Button {
+                        add_css_class: "pill",
+
+                        #[watch]
+                        set_visible: model.status != InstallationStatus::Installed,
+
+                        adw::ButtonContent {
+                            set_icon_name: "document-save-symbolic",
+
+                            #[watch]
+                            set_label: if model.status == InstallationStatus::NotInstalled {
+                                "Install"
+                            } else {
+                                "Update"
+                            }
+                        }
                     }
                 }
             }
@@ -121,6 +146,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
             developer: String::new(),
             publisher: String::new(),
 
+            status: InstallationStatus::NotInstalled,
             launch_info: GameLaunchInfo::default()
         };
 
@@ -172,6 +198,33 @@ impl SimpleAsyncComponent for GameLibraryDetails {
 
                 self.background.emit(LazyPictureComponentMsg::SetImage(Some(image)));
 
+                // Request game installation status update.
+                {
+                    let listener = listener.clone();
+                    let sender = sender.clone();
+                    let edition_name = edition.name.clone();
+
+                    tokio::spawn(async move {
+                        let (send, recv) = tokio::sync::oneshot::channel();
+
+                        if let Err(err) = listener.send(SyncGameCommand::GetStatus { edition: edition_name, listener: send }) {
+                            tracing::error!(?err, "Failed to request game installation status");
+
+                            return;
+                        }
+
+                        match recv.await {
+                            Ok(Ok(status)) => {
+                                sender.input(GameLibraryDetailsMsg::SetGameInstallationStatus(status));
+                            }
+
+                            Ok(Err(err)) => tracing::error!(?err, "Failed to request game installation status"),
+                            Err(err) => tracing::error!(?err, "Failed to request game installation status")
+                        }
+                    });
+                }
+
+                // Request game launching info update.
                 tokio::spawn(async move {
                     let (send, recv) = tokio::sync::oneshot::channel();
 
@@ -192,6 +245,7 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                 });
             }
 
+            GameLibraryDetailsMsg::SetGameInstallationStatus(status) => self.status = status,
             GameLibraryDetailsMsg::SetGameLaunchInfo(info) => self.launch_info = info
         }
     }
