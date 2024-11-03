@@ -110,6 +110,14 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                     // Update / Install (execute diff) button
                     gtk::Button {
                         add_css_class: "pill",
+                        add_css_class: "suggested-action",
+
+                        #[watch]
+                        set_css_classes: if model.status == InstallationStatus::UpdateAvailable {
+                            &["pill"]
+                        } else {
+                            &["pill", "suggested-action"]
+                        },
 
                         #[watch]
                         set_visible: model.status != InstallationStatus::Installed,
