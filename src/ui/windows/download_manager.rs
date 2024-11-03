@@ -323,24 +323,6 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
             }
 
             DownloadManagerWindowMsg::UpdateProgress(progress) => {
-                if let Some(title) = progress.title {
-                    let title = match &self.updates_lang {
-                        Some(lang) => title.translate(lang),
-                        None => title.default_translation()
-                    };
-
-                    // TODO
-                }
-
-                if let Some(description) = progress.description {
-                    let description = match &self.updates_lang {
-                        Some(lang) => description.translate(lang),
-                        None => description.default_translation()
-                    };
-
-                    // TODO
-                }
-
                 let progress_label = match &self.updates_lang {
                     Some(lang) => progress.progress.translate(lang),
                     None => progress.progress.default_translation()
@@ -351,6 +333,24 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
 
                 if self.last_update.elapsed().as_millis() > 1000 {
                     self.graph.emit(GraphMsg::AddPoint(progress.current - self.last_current));
+
+                    if let Some(title) = progress.title {
+                        let title = match &self.updates_lang {
+                            Some(lang) => title.translate(lang),
+                            None => title.default_translation()
+                        };
+
+                        // TODO
+                    }
+
+                    if let Some(description) = progress.description {
+                        let description = match &self.updates_lang {
+                            Some(lang) => description.translate(lang),
+                            None => description.default_translation()
+                        };
+
+                        // TODO
+                    }
 
                     self.last_current = progress.current;
                     self.last_update = Instant::now();
