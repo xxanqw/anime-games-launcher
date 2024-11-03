@@ -340,6 +340,9 @@ impl SimpleAsyncComponent for LibraryPage {
                                                                         LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
                                                                     },
 
+                                                                    current: progress.progress_current,
+                                                                    total: progress.progress_total,
+
                                                                     title: progress.title,
                                                                     description: progress.description
                                                                 })
@@ -356,7 +359,10 @@ impl SimpleAsyncComponent for LibraryPage {
                                                                             } else {
                                                                                 LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
                                                                             },
-        
+
+                                                                            current: progress.progress_current,
+                                                                            total: progress.progress_total,
+
                                                                             title: progress.title,
                                                                             description: progress.description
                                                                         })
@@ -381,7 +387,10 @@ impl SimpleAsyncComponent for LibraryPage {
                                                                             } else {
                                                                                 LocalizableString::raw(format!("{:.2}%", progress.fraction() * 100.0))
                                                                             },
-        
+
+                                                                            current: progress.progress_current,
+                                                                            total: progress.progress_total,
+
                                                                             title: progress.title,
                                                                             description: progress.description
                                                                         })
