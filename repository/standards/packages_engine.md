@@ -1097,7 +1097,7 @@ By default `seahash` is used as a launcher's internal algorithm.
 
 ```lua
 -- [236, 74, 195, 208]
-print(hash.calc("Hello, World!", "crc32"))
+dbg(hash.calc("Hello, World!", "crc32"))
 ```
 
 ### `hash.builder([algorithm: HashAlgorithm]) -> number`
@@ -1109,7 +1109,7 @@ struct allows you to write small chunks of data iteratively, not
 keeping all of them in RAM at once.
 
 ```lua
-local hasher = hash.hasher("md5")
+local hasher = hash.builder("md5")
 
 -- do some actions
 ```
@@ -1119,7 +1119,7 @@ local hasher = hash.hasher("md5")
 Write a chunk of data to the open hasher.
 
 ```lua
-local hasher = hash.hasher("xxh3-128")
+local hasher = hash.builder("xxh3-128")
 local head = net.open("https://example.com/large_file.zip")
 
 if head.is_ok do
@@ -1147,14 +1147,14 @@ Finalize hash calculation in the open hasher struct.
 This will close the hasher and prevent future writes.
 
 ```lua
-local hasher = hash.hasher("sha1")
+local hasher = hash.builder("sha1")
 
 hash.write(hasher, "Hello")
 hash.write(hasher, "World")
 
 -- printed the same value
-print(hash.finalize(hasher))
-print(hash.calc("HelloWorld"))
+print(str.encode(hash.finalize(hasher), "hex"))
+print(str.encode(hash.calc("HelloWorld"), "hex"))
 ```
 
 ## Sync API
