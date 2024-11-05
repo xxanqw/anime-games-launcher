@@ -34,6 +34,7 @@ pub mod prelude {
     pub use super::packages::prelude::*;
     pub use super::generations::prelude::*;
     pub use super::games::prelude::*;
+    pub use super::profiles::prelude::*;
     pub use super::ui::prelude::*;
 
     pub use super::config::{

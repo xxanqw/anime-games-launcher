@@ -1,11 +1,13 @@
-mod general;
-mod runtime;
+pub mod general;
+pub mod runtime;
 
-pub use general::Settings as GeneralProfileSettings;
+pub mod prelude {
+    pub use super::general::Settings as GeneralProfileSettings;
 
-pub use runtime::{
-    Runtime as ProfileRuntime,
-    WindowsNativeProfileRuntimeSettings,
-    LinuxNativeProfileRuntimeSettings,
-    LinuxWineProfileRuntimeSettings
-};
+    pub use super::runtime::{
+        Runtime as ProfileRuntime,
+        WindowsNativeProfileRuntimeSettings,
+        LinuxNativeProfileRuntimeSettings,
+        LinuxWineProfileRuntimeSettings
+    };
+}

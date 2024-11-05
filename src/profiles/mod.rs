@@ -4,9 +4,19 @@ use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
-mod settings;
+pub mod settings;
+pub mod store;
 
-pub use settings::*;
+pub mod prelude {
+    pub use super::settings::prelude::*;
+
+    pub use super::store::{
+        Store as ProfilesStore,
+        StoreError as ProfilesStoreError
+    };
+
+    pub use super::Profile;
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Profile {
@@ -22,7 +32,7 @@ pub struct Profile {
     /// Platform which current profile should emulate.
     target: TargetPlatform,
 
-    /// General profile settings (equal to all the platform).
+    /// General and OS-specific profile settings.
     general: GeneralProfileSettings,
 
     /// Soruce -> target CPU instructions translation settings.
