@@ -36,10 +36,10 @@ jobs:
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Check flake format
-        run: nix flake check
+        run: nix flake check --accept-flake-config
 
       - name: Check source code
-        run: nix develop --command cargo check --verbose
+        run: nix develop --accept-flake-config --command cargo check --verbose
 
       - name: Perform source code tests
-        run: nix develop --command cargo test --verbose
+        run: nix develop --accept-flake-config --command cargo test --verbose
