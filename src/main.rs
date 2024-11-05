@@ -14,6 +14,7 @@ pub mod cache;
 pub mod packages;
 pub mod generations;
 pub mod games;
+pub mod profiles;
 
 pub mod i18n;
 pub mod utils;
