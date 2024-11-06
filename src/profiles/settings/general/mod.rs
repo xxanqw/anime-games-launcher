@@ -15,6 +15,9 @@ pub mod prelude {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// General settings specify environment flags
+/// and additional applications used to launch the game
+/// depending on the target platform's operation system.
 pub enum General {
     Windows(windows::Settings),
     Linux(linux::Settings)

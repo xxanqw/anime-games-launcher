@@ -11,6 +11,8 @@ pub mod prelude {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Runtime settings configure the runtime environment
+/// specified in the target platform.
 pub enum Runtime {
     LinuxWine(linux_wine::Settings),
     None

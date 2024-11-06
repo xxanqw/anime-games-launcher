@@ -87,8 +87,8 @@ impl AsJson for Profile {
 
             "general": self.general.to_json()?,
 
-            "translation": json!({}),
-            "virtualisation": json!({}),
+            "translation": Json::Null,
+            "virtualisation": Json::Null,
 
             "runtime": self.runtime.to_json()?
         }))
