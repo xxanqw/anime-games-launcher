@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 // TODO: bubblewrap sandbox settings
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 /// General settings for linux.
 pub struct Settings {
     pub common: CommonGeneralProfileSettings

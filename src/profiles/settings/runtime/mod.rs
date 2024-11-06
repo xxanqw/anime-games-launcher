@@ -18,6 +18,16 @@ pub enum Runtime {
     None
 }
 
+impl Default for Runtime {
+    fn default() -> Self {
+        if *CURRENT_PLATFORM == Some(TargetPlatform::X86_64_linux_native) {
+            Self::LinuxWine(linux_wine::Settings::default())
+        } else {
+            Self::None
+        }
+    }
+}
+
 impl Runtime {
     pub fn to_json(&self) -> Result<Json, AsJsonError> {
         match self {

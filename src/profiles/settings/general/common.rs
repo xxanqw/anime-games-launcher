@@ -4,7 +4,7 @@ use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 /// Settings common to all the systems.
 pub struct Settings {
     /// Environment variables passed to the executable.

@@ -38,7 +38,7 @@ impl FromStr for WineSync {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 /// Runtime settings for linux wine.
 pub struct Settings {
     /// Wine events synchronization method.

@@ -1,81 +1,70 @@
 use adw::prelude::*;
+use relm4::prelude::*;
 
-use relm4::{prelude::*, factory::*};
+use crate::prelude::*;
 
-use crate::ui::windows::profiles_window::*;
-
-#[derive(Debug)]
-struct Profile {
-    name: String,
-    subtitle: String,
-    check_button: gtk::CheckButton,
-}
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ProfileFactoryComponent(Profile);
 
 #[relm4::factory(async)]
-impl AsyncFactoryComponent for Profile {
+impl AsyncFactoryComponent for ProfileFactoryComponent {
     type Init = Profile;
-    type Input = ProfilePageAppMsg;
-    type Output = ProfilePageAppMsg;
+    type Input = ProfilePageMsg;
+    type Output = ProfilePageMsg;
     type ParentWidget = adw::PreferencesGroup;
     type CommandOutput = ();
 
     view! {
         #[root]
         adw::ActionRow {
-            set_title: &self.name,
-            set_subtitle: &self.subtitle,
-            add_prefix: &self.check_button.clone(),
+            set_title: self.0.name(),
+            set_subtitle: &self.0.target_platform().to_string(),
+
             set_activatable: true,
 
-            set_tooltip_text: Some("Set default profile"),
-
             add_suffix = &gtk::Button {
                 set_align: gtk::Align::Center,
-                add_css_class: "circular",
-                set_icon_name: "edit-symbolic",
-                set_tooltip_text: Some("Edit profile"),
-            },
 
-            add_suffix = &gtk::Button {
-                set_align: gtk::Align::Center,
                 add_css_class: "circular",
                 set_icon_name: "user-trash-symbolic",
+
                 set_tooltip_text: Some("Delete profile"),
+
                 connect_clicked[sender, index] => move |_| {
-                    sender.output(ProfilePageAppMsg::Delete(index.current_index())).unwrap();
+                    let _ = sender.output(ProfilePageMsg::DeleteProfile(index.clone()));
                 }
             },
 
-
             connect_activated[sender, index] => move |_| {
-                sender.output(ProfilePageAppMsg::SetDefault(index.current_index())).unwrap();
+                let _ = sender.output(ProfilePageMsg::EditProfile(index.clone()));
             },
         }
     }
 
-    async fn init_model(init: Self::Init, index: &DynamicIndex, _sender: AsyncFactorySender<Self>) -> Self {
-        init
+    #[inline]
+    async fn init_model(init: Self::Init, _index: &DynamicIndex, _sender: AsyncFactorySender<Self>) -> Self {
+        Self(init)
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum ProfilePageAppMsg {
-    New,
-    Delete(usize),
-    SetDefault(usize),
+pub enum ProfilePageMsg {
+    UpdateProfiles,
+    CreateProfile,
+    EditProfile(DynamicIndex),
+    DeleteProfile(DynamicIndex)
 }
 
 #[derive(Debug)]
-pub struct ProfilePageApp {
-    profile_window: Option<AsyncController<CreateWineProfileApp>>,
-    profiles_root_widget: gtk::CheckButton,
-    profiles: AsyncFactoryVecDeque<Profile>,
+pub struct ProfilePage {
+    manager_window: AsyncController<ProfileManagerWindow>,
+    profiles: AsyncFactoryVecDeque<ProfileFactoryComponent>
 }
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for ProfilePageApp {
+impl SimpleAsyncComponent for ProfilePage {
     type Init = ();
-    type Input = ProfilePageAppMsg;
+    type Input = ProfilePageMsg;
     type Output = ();
 
     view! {
@@ -87,10 +76,13 @@ impl SimpleAsyncComponent for ProfilePageApp {
                 #[wrap(Some)]
                 set_header_suffix = &gtk::Button {
                     set_align: gtk::Align::Center,
+
                     add_css_class: "flat",
                     set_icon_name: "list-add-symbolic",
+
                     set_tooltip_text: Some("Create new profile"),
-                    connect_clicked => ProfilePageAppMsg::New,
+
+                    connect_clicked => ProfilePageMsg::CreateProfile
                 },
 
                 model.profiles.widget(),
@@ -99,70 +91,56 @@ impl SimpleAsyncComponent for ProfilePageApp {
     }
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let mut model = Self {
-            profile_window: None,
-            profiles_root_widget: gtk::CheckButton::new(),
-            profiles: AsyncFactoryVecDeque::builder().launch_default().forward(sender.input_sender(), std::convert::identity),
+        let model = Self {
+            manager_window: ProfileManagerWindow::builder()
+                .launch(())
+                .detach(),
+
+            profiles: AsyncFactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), std::convert::identity)
         };
 
-        // Test profiles
-        let profiles = [
-            (String::from("Default"), String::from("Wine-Staging-TkG 9.0 ∙ DXVK 2.1")),
-            (String::from("Profile2"), String::from("Wine-Staging-TkG 8.1 ∙ DXVK 1.8")),
-            (String::from("Native"), String::from("Linux Native"))
-        ];
-
-        for (name, subtitle) in profiles {
-            let check_button = gtk::CheckButton::new();
-            check_button.set_group(Some(&model.profiles_root_widget));
-
-            if name == "Default" {
-                check_button.set_active(true);
-            }
-
-            model.profiles.guard().push_back(Profile {
-                name,
-                subtitle,
-                check_button,
-            });
-        }
+        sender.input(ProfilePageMsg::UpdateProfiles);
 
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
-        let mut guard = self.profiles.guard();
-
+    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            ProfilePageAppMsg::New => {
-                self.profile_window = Some(CreateWineProfileApp::builder().launch(()).detach());
-                if let Some(window) = &self.profile_window {
-                    window.widget().present();
-                }
-            }
+            ProfilePageMsg::UpdateProfiles => {
+                let config = config::get();
 
-            ProfilePageAppMsg::Delete(index) => {
-                let active = if let Some(profile) = guard.get(index) {
-                    profile.check_button.is_active()
-                } else { false };
+                let store = ProfilesStore::new(config.profiles.store.path);
 
-                if guard.len() > 1 {
-                    guard.remove(index);
+                match store.list().await {
+                    Ok(profiles) => {
+                        let mut guard = self.profiles.guard();
 
-                    // Set the first profile as default if the deleted profile was the default one
-                    if active {
-                        sender.input(ProfilePageAppMsg::SetDefault(0));
+                        guard.clear();
+
+                        for profile in profiles {
+                            guard.push_back(profile);
+                        }
                     }
+
+                    Err(err) => tracing::error!(?err, "Failed to list profiles")
                 }
             }
 
-            ProfilePageAppMsg::SetDefault(index) => {
-                if let Some(profile) = guard.get(index) {
-                    profile.check_button.set_active(true);
+            ProfilePageMsg::CreateProfile => {
+                self.manager_window.emit(ProfileManagerWindowMsg::OpenWindow(Profile::new("New profile")));
+            }
+
+            ProfilePageMsg::EditProfile(index) => {
+                if let Some(profile) = self.profiles.guard().get(index.current_index()) {
+                    self.manager_window.emit(ProfileManagerWindowMsg::OpenWindow(profile.0.clone()));
                 }
             }
+
+            ProfilePageMsg::DeleteProfile(index) => ()
         }
     }
 }

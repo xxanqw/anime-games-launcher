@@ -48,7 +48,7 @@ pub enum MainWindowMsg {
 pub struct MainWindow {
     store_page: AsyncController<StorePage>,
     library_page: AsyncController<LibraryPage>,
-    profile_page: AsyncController<ProfilePageApp>,
+    profile_page: AsyncController<ProfilePage>,
 
     view_stack: adw::ViewStack,
 
@@ -210,7 +210,7 @@ impl SimpleAsyncComponent for MainWindow {
                     LibraryPageOutput::SetShowBack(s) => MainWindowMsg::SetShowBack(s)
                 }),
 
-            profile_page: ProfilePageApp::builder()
+            profile_page: ProfilePage::builder()
                 .launch(())
                 .detach(),
 

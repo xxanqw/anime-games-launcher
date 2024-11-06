@@ -32,9 +32,6 @@ pub struct Profile {
     /// Platform which current profile should emulate.
     target: TargetPlatform,
 
-    /// General and OS-specific profile settings.
-    general: GeneralProfileSettings,
-
     /// Soruce -> target CPU instructions translation settings.
     /// 
     /// Not yet supported (and unsure if ever will be).
@@ -45,11 +42,44 @@ pub struct Profile {
     /// Not yet supported (and unsure if ever will be).
     virtualisation: (),
 
+    /// General and OS-specific profile settings.
+    general: GeneralProfileSettings,
+
     /// Source -> target environment compatibility settings.
     runtime: RuntimeProfileSettings
 }
 
 impl Profile {
+    /// Create new profile with specified name
+    /// and default settings depending on the current
+    /// platform.
+    /// 
+    /// Fallback to default source platform if current one
+    /// is unknown.
+    pub fn new(name: impl ToString) -> Self {
+        let source = CURRENT_PLATFORM.unwrap_or_default();
+
+        Self {
+            id: Hash::rand(),
+            name: name.to_string(),
+            source,
+
+            // Predict target platform of the profile
+            // depending on the current source platform.
+            target: match source {
+                TargetPlatform::X86_64_windows_native => TargetPlatform::X86_64_windows_native,
+                TargetPlatform::X86_64_linux_native   => TargetPlatform::X86_64_linux_wine64,
+                TargetPlatform::X86_64_linux_wine32   => TargetPlatform::X86_64_linux_wine32,
+                TargetPlatform::X86_64_linux_wine64   => TargetPlatform::X86_64_linux_wine64
+            },
+
+            translation: (),
+            virtualisation: (),
+            general: GeneralProfileSettings::default(),
+            runtime: RuntimeProfileSettings::default()
+        }
+    }
+
     #[inline]
     /// Get profile ID.
     pub fn id(&self) -> &Hash {
@@ -85,11 +115,10 @@ impl AsJson for Profile {
                 "target": self.target.to_string()
             },
 
-            "general": self.general.to_json()?,
-
             "translation": Json::Null,
             "virtualisation": Json::Null,
 
+            "general": self.general.to_json()?,
             "runtime": self.runtime.to_json()?
         }))
     }
@@ -135,9 +164,10 @@ impl AsJson for Profile {
 
             target,
 
-            general,
             translation: (),
             virtualisation: (),
+
+            general,
             runtime
         })
     }

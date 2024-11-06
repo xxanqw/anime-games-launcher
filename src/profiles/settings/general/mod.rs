@@ -1,4 +1,4 @@
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
@@ -20,14 +20,33 @@ pub mod prelude {
 /// depending on the target platform's operation system.
 pub enum General {
     Windows(windows::Settings),
-    Linux(linux::Settings)
+    Linux(linux::Settings),
+    Unknown(common::Settings)
+}
+
+impl Default for General {
+    fn default() -> Self {
+        match *CURRENT_PLATFORM {
+            Some(TargetPlatform::X86_64_windows_native) => Self::Windows(windows::Settings::default()),
+
+            Some(TargetPlatform::X86_64_linux_native) |
+            Some(TargetPlatform::X86_64_linux_wine32) |
+            Some(TargetPlatform::X86_64_linux_wine64) => Self::Linux(linux::Settings::default()),
+
+            None => Self::Unknown(common::Settings::default())
+        }
+    }
 }
 
 impl General {
     pub fn to_json(&self) -> Result<Json, AsJsonError> {
         match self {
             Self::Windows(settings) => settings.to_json(),
-            Self::Linux(settings) => settings.to_json()
+            Self::Linux(settings) => settings.to_json(),
+
+            Self::Unknown(settings) => Ok(json!({
+                "common": settings.to_json()?
+            }))
         }
     }
 

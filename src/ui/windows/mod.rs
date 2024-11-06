@@ -1,5 +1,5 @@
 mod main_window;
-mod profiles_window;
+mod profile_manager;
 mod download_manager;
 
 pub use main_window::{
@@ -9,6 +9,11 @@ pub use main_window::{
 };
 
 pub use main_window::library_page::SyncGameCommand;
+
+pub use profile_manager::{
+    ProfileManagerWindow,
+    ProfileManagerWindowMsg
+};
 
 pub use download_manager::{
     DownloadManagerWindow,

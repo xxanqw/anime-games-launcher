@@ -5,15 +5,29 @@ use serde::{Serialize, Deserialize};
 use crate::prelude::*;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TargetPlatform {
     X86_64_windows_native,
+
+    #[default]
     X86_64_linux_native,
+
     X86_64_linux_wine32,
     X86_64_linux_wine64
 }
 
 impl TargetPlatform {
+    #[inline]
+    /// Get list of all available platforms.
+    pub fn list() -> &'static [Self] {
+        &[
+            Self::X86_64_windows_native,
+            Self::X86_64_linux_native,
+            Self::X86_64_linux_wine32,
+            Self::X86_64_linux_wine64
+        ]
+    }
+
     /// Try to get current platform.
     pub fn current() -> Option<Self> {
         let info = os_info::get();

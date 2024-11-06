@@ -75,6 +75,11 @@ impl Store {
             profiles.push(profile??);
         }
 
+        // Sort all the profiles so they have consistent positioning.
+        profiles.sort_by(|a, b| {
+            a.name.cmp(&b.name)
+        });
+
         Ok(profiles)
     }
 
