@@ -46,7 +46,7 @@ pub struct Profile {
     virtualisation: (),
 
     /// Source -> target environment compatibility settings.
-    runtime: ProfileRuntime
+    runtime: RuntimeProfileSettings
 }
 
 impl Profile {
@@ -105,8 +105,12 @@ impl AsJson for Profile {
             .ok_or_else(|| AsJsonError::InvalidFieldValue("profile.target"))?
             .map_err(|err| AsJsonError::Other(err.into()))?;
 
+        let general = json.get("general")
+            .map(|general| GeneralProfileSettings::from_json(&target, general))
+            .ok_or_else(|| AsJsonError::FieldNotFound("general"))??;
+
         let runtime = json.get("runtime")
-            .map(|runtime| ProfileRuntime::from_json(&target, runtime))
+            .map(|runtime| RuntimeProfileSettings::from_json(&target, runtime))
             .ok_or_else(|| AsJsonError::FieldNotFound("runtime"))??;
 
         Ok(Self {
@@ -131,13 +135,9 @@ impl AsJson for Profile {
 
             target,
 
-            general: json.get("general")
-                .map(GeneralProfileSettings::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("general"))??,
-
+            general,
             translation: (),
             virtualisation: (),
-
             runtime
         })
     }

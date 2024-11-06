@@ -5,6 +5,7 @@ use serde_json::{json, Value as Json};
 use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Settings common to all the systems.
 pub struct Settings {
     /// Environment variables passed to the executable.
     pub environment: Option<HashMap<String, String>>,
@@ -35,7 +36,7 @@ impl AsJson for Settings {
                             value.as_str().map(|value| (key.to_string(), value.to_string()))
                         })
                         .collect::<Option<HashMap<String, String>>>()
-                        .ok_or_else(|| AsJsonError::InvalidFieldValue("general.environment[]"))
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("general.common.environment[]"))
                 })
                 .transpose()?,
 
@@ -45,14 +46,14 @@ impl AsJson for Settings {
                     extra_args.iter()
                         .map(|arg| arg.as_str().map(String::from))
                         .collect::<Option<Vec<String>>>()
-                        .ok_or_else(|| AsJsonError::InvalidFieldValue("general.extra_arguments[]"))
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("general.common.extra_arguments[]"))
                 })
                 .transpose()?,
 
             show_terminal: json.get("show_terminal")
-                .ok_or_else(|| AsJsonError::FieldNotFound("general.show_terminal"))?
+                .ok_or_else(|| AsJsonError::FieldNotFound("general.common.show_terminal"))?
                 .as_bool()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.show_terminal"))?
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("general.common.show_terminal"))?
         })
     }
 }

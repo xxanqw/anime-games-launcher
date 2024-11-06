@@ -6,9 +6,13 @@ mod windows_native;
 mod linux_native;
 mod linux_wine;
 
-pub use windows_native::Settings as WindowsNativeProfileRuntimeSettings;
-pub use linux_native::Settings as LinuxNativeProfileRuntimeSettings;
-pub use linux_wine::Settings as LinuxWineProfileRuntimeSettings;
+pub mod prelude {
+    pub use super::windows_native::Settings as WindowsNativeProfileRuntimeSettings;
+    pub use super::linux_native::Settings as LinuxNativeProfileRuntimeSettings;
+    pub use super::linux_wine::Settings as LinuxWineProfileRuntimeSettings;
+
+    pub use super::Runtime as RuntimeProfileSettings;
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Runtime {
