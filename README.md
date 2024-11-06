@@ -1,6 +1,12 @@
 # Anime Games launcher
 
-WIP
+Experimental games store-like application (internally called "anime steam") powered by custom packages manager and standardized lua scripts for games integration.
+
+Heavily work in progress. Watch for development process in our discord server.
+
+| Store page | Store details page | Library details page |
+| - | - | - |
+| <img src="repository/pictures/store.png" /> | <img src="repository/pictures/store-details.png" /> | <img src="repository/pictures/library-details.png" /> |
 
 # Declaration of openness / Декларация открытости
 
