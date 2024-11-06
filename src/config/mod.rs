@@ -7,13 +7,15 @@ pub mod general;
 pub mod games;
 pub mod packages;
 pub mod generations;
+pub mod profiles;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     pub general: general::General,
     pub games: games::Games,
     pub packages: packages::Packages,
-    pub generations: generations::Generations
+    pub generations: generations::Generations,
+    pub profiles: profiles::Profiles
 }
 
 impl AsJson for Config {
@@ -22,7 +24,8 @@ impl AsJson for Config {
             "general": self.general.to_json()?,
             "games": self.games.to_json()?,
             "packages": self.packages.to_json()?,
-            "generations": self.generations.to_json()?
+            "generations": self.generations.to_json()?,
+            "profiles": self.profiles.to_json()?
         }))
     }
 
@@ -42,7 +45,11 @@ impl AsJson for Config {
 
             generations: json.get("generations")
                 .map(generations::Generations::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("generations"))??
+                .ok_or_else(|| AsJsonError::FieldNotFound("generations"))??,
+
+            profiles: json.get("profiles")
+                .map(profiles::Profiles::from_json)
+                .ok_or_else(|| AsJsonError::FieldNotFound("profiles"))??
         })
     }
 }
