@@ -13,7 +13,10 @@ pub enum StoreError {
     Serialize(#[from] serde_json::Error),
 
     #[error("Failed to decode profile: {0}")]
-    AsJson(#[from] AsJsonError)
+    AsJson(#[from] AsJsonError),
+
+    #[error("Failed to await profile reading task: {0}")]
+    Async(#[from] tokio::task::JoinError)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,30 +52,28 @@ impl Store {
     }
 
     /// Return list of all profiles with supported source target.
-    pub fn list(&self) -> Result<Vec<Profile>, StoreError> {
-        let profiles = std::fs::read_dir(&self.folder)?
-            .map(|entry| {
-                entry.map_err(StoreError::Io)
-                    .and_then(|entry| {
-                        if !entry.path().is_file() {
-                            return Ok(None);
-                        }
+    pub async fn list(&self) -> Result<Vec<Profile>, StoreError> {
+        let mut tasks = tokio::task::JoinSet::new();
 
-                        let profile = std::fs::read(entry.path())?;
-                        let profile = serde_json::from_slice::<Json>(&profile)?;
-                        let profile = Profile::from_json(&profile)?;
+        for entry in std::fs::read_dir(&self.folder)? {
+            let entry = entry?;
 
-                        Ok::<_, StoreError>(Some(profile))
-                    })
-            })
-            .filter_map(|profile| {
-                match profile {
-                    Ok(Some(profile)) if Some(profile.source) == *CURRENT_PLATFORM => Some(Ok(profile)),
-                    Err(err) => Some(Err(err)),
-                    _ => None
-                }
-            })
-            .collect::<Result<Vec<Profile>, _>>()?;
+            if entry.path().is_file() {
+                tasks.spawn(async move {
+                    let profile = tokio::fs::read(entry.path()).await?;
+                    let profile = serde_json::from_slice::<Json>(&profile)?;
+                    let profile = Profile::from_json(&profile)?;
+
+                    Ok::<_, StoreError>(profile)
+                });
+            }
+        }
+
+        let mut profiles = Vec::with_capacity(tasks.len());
+
+        while let Some(profile) = tasks.join_next().await {
+            profiles.push(profile??);
+        }
 
         Ok(profiles)
     }
