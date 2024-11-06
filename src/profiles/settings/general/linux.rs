@@ -6,24 +6,16 @@ use crate::prelude::*;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 /// General settings for linux.
-pub struct Settings {
-    pub common: CommonGeneralProfileSettings
-}
+pub struct Settings;
 
 impl AsJson for Settings {
     #[inline]
     fn to_json(&self) -> Result<Json, AsJsonError> {
-        Ok(json!({
-            "common": self.common.to_json()?
-        }))
+        Ok(json!({}))
     }
 
     #[inline]
-    fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
-        Ok(Self {
-            common: json.get("common")
-                .ok_or_else(|| AsJsonError::FieldNotFound("general.common"))
-                .and_then(CommonGeneralProfileSettings::from_json)?
-        })
+    fn from_json(_json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        Ok(Self)
     }
 }

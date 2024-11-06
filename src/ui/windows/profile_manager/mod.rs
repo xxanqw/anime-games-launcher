@@ -1,11 +1,8 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
-pub mod component_page;
-pub mod environment_page;
-
-use component_page::*;
-use environment_page::*;
+pub mod general;
+pub mod runtime;
 
 use crate::prelude::*;
 
@@ -22,8 +19,10 @@ impl WidgetTemplate for ComboSwitchRow {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct ProfileManagerWindow {
+    general_page: AsyncController<general::GeneralSettingsPage>,
+
     profile: Option<Profile>
 }
 
@@ -51,7 +50,7 @@ impl SimpleAsyncComponent for ProfileManagerWindow {
             add_css_class?: crate::APP_DEBUG.then_some("devel"),
 
             add = &adw::PreferencesPage {
-                set_title: "General",
+                set_title: "Profile",
 
                 add = &adw::PreferencesGroup {
                     set_title: "Profile",
@@ -86,10 +85,16 @@ impl SimpleAsyncComponent for ProfileManagerWindow {
                                     .iter()
                                     .position(|platform| platform == profile.target_platform())
                                     .map(|pos| pos as u32)
-                            })
+                            }),
+
+                        connect_selected_notify[sender] => move |combo_row| {
+                            // sender.input();
+                        }
                     }
                 }
             },
+
+            add = model.general_page.widget(),
 
             add = &adw::PreferencesPage {
                 set_title: "Runtime",
@@ -112,6 +117,10 @@ impl SimpleAsyncComponent for ProfileManagerWindow {
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
+            general_page: general::GeneralSettingsPage::builder()
+                .launch(())
+                .detach(),
+
             profile: None
         };
 
@@ -127,6 +136,8 @@ impl SimpleAsyncComponent for ProfileManagerWindow {
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
             ProfileManagerWindowMsg::OpenWindow(profile) => unsafe {
+                self.general_page.emit(general::GeneralSettingsPageInput::SetValues(profile.general_settings().clone()));
+
                 self.profile = Some(profile);
 
                 if let Some(window) = WINDOW.as_ref() {

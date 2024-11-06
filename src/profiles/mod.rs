@@ -103,6 +103,18 @@ impl Profile {
     pub fn target_platform(&self) -> &TargetPlatform {
         &self.target
     }
+
+    #[inline]
+    // Get general settings.
+    pub fn general_settings(&self) -> &GeneralProfileSettings {
+        &self.general
+    }
+
+    #[inline]
+    /// Get runtime settings.
+    pub fn runtime_settings(&self) -> &RuntimeProfileSettings {
+        &self.runtime
+    }
 }
 
 impl AsJson for Profile {
