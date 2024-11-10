@@ -32,7 +32,9 @@ impl SimpleAsyncComponent for CommonGeneralSettingsPage {
                 set_subtitle: "Launch the game with a terminal window",
 
                 #[watch]
-                set_active: model.settings.show_terminal
+                set_active: model.settings.show_terminal,
+
+                connect_active_notify => CommonGeneralSettingsPageInput::Update
             }
         }
     }

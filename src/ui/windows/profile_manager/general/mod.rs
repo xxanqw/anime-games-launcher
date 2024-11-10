@@ -4,19 +4,19 @@ use relm4::prelude::*;
 use crate::prelude::*;
 
 pub mod common;
-pub mod windows;
 pub mod linux;
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GeneralSettingsPageInput {
     SetValues(GeneralProfileSettings),
-    UpdateCommonValues(CommonGeneralProfileSettings)
+    UpdateCommonValues(CommonGeneralProfileSettings),
+    UpdateLinuxValues(LinuxGeneralProfileSettings)
 }
 
 #[derive(Debug)]
 pub struct GeneralSettingsPage {
     common_page: AsyncController<common::CommonGeneralSettingsPage>,
-    windows_page: AsyncController<windows::WindowsGeneralSettingsPage>,
     linux_page: AsyncController<linux::LinuxGeneralSettingsPage>,
 
     settings: GeneralProfileSettings
@@ -34,11 +34,6 @@ impl SimpleAsyncComponent for GeneralSettingsPage {
 
             add = model.common_page.widget(),
 
-            add = &model.windows_page.widget().clone() -> adw::PreferencesGroup {
-                #[watch]
-                set_visible: matches!(model.settings, GeneralProfileSettings::Windows { .. })
-            },
-
             add = &model.linux_page.widget().clone() -> adw::PreferencesGroup {
                 #[watch]
                 set_visible: matches!(model.settings, GeneralProfileSettings::Linux { .. })
@@ -52,13 +47,9 @@ impl SimpleAsyncComponent for GeneralSettingsPage {
                 .launch(())
                 .forward(sender.input_sender(), GeneralSettingsPageInput::UpdateCommonValues),
 
-            windows_page: windows::WindowsGeneralSettingsPage::builder()
-                .launch(())
-                .detach(),
-
             linux_page: linux::LinuxGeneralSettingsPage::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), GeneralSettingsPageInput::UpdateLinuxValues),
 
             settings: GeneralProfileSettings::default()
         };
@@ -73,13 +64,34 @@ impl SimpleAsyncComponent for GeneralSettingsPage {
             GeneralSettingsPageInput::SetValues(settings) => {
                 self.settings = settings;
 
-                if let GeneralProfileSettings::Unknown(settings) = &self.settings {
-                    self.common_page.emit(common::CommonGeneralSettingsPageInput::SetValues(settings.clone()));
+                match self.settings.clone() {
+                    GeneralProfileSettings::Unknown(settings) => {
+                        self.common_page.emit(common::CommonGeneralSettingsPageInput::SetValues(settings));
+                    }
+
+                    GeneralProfileSettings::Linux { common, linux } => {
+                        self.common_page.emit(common::CommonGeneralSettingsPageInput::SetValues(common));
+                        self.linux_page.emit(linux::LinuxGeneralSettingsPageInput::SetValues(linux));
+                    }
+
+                    _ => ()
                 }
             }
 
             GeneralSettingsPageInput::UpdateCommonValues(settings) => {
-                self.settings = GeneralProfileSettings::Unknown(settings);
+                match &mut self.settings {
+                    GeneralProfileSettings::Windows { common, .. } |
+                    GeneralProfileSettings::Linux { common, .. } |
+                    GeneralProfileSettings::Unknown(common) => *common = settings
+                }
+
+                let _ = sender.output(self.settings.clone());
+            }
+
+            GeneralSettingsPageInput::UpdateLinuxValues(settings) => {
+                if let GeneralProfileSettings::Linux { linux, .. } = &mut self.settings {
+                    *linux = settings;
+                }
 
                 let _ = sender.output(self.settings.clone());
             }

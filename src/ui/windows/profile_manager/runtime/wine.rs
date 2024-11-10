@@ -4,27 +4,26 @@ use relm4::prelude::*;
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct CommonGeneralSettingsPage(CommonGeneralProfileSettings);
+pub struct LinuxWineRuntimeSettingsPage {
+    settings: LinuxWineProfileRuntimeSettings
+}
 
 #[relm4::component(pub, async)]
-impl SimpleAsyncComponent for CommonGeneralSettingsPage {
-    type Init = CommonGeneralProfileSettings;
+impl SimpleAsyncComponent for LinuxWineRuntimeSettingsPage {
+    type Init = ();
     type Input = ();
     type Output = ();
 
     view! {
         adw::PreferencesGroup {
-            set_title: "Common",
-
-            adw::SwitchRow {
-                set_title: "Open terminal window",
-                set_subtitle: "Launch the game with a terminal window"
-            }
+            set_title: "Wine"
         }
     }
 
-    async fn init(init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let model = Self(init);
+    async fn init(_init: Self::Init, root: Self::Root, _sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
+        let model = Self {
+            settings: LinuxWineProfileRuntimeSettings::default()
+        };
 
         let widgets = view_output!();
 
