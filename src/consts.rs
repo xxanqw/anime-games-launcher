@@ -20,74 +20,104 @@ lazy_static::lazy_static! {
     /// Path to the data folder.
     ///
     /// Default is `$XDG_DATA_HOME/anime-games-launcher`.
-    pub static ref DATA_FOLDER: PathBuf = std::env::var("XDG_DATA_HOME")
-        .map(|data| format!("{data}/anime-games-launcher"))
-        .or_else(|_| {
-            std::env::var("HOME")
-                .map(|home| {
-                    format!("{home}/.local/share/anime-games-launcher")
-                })
-        })
-        .or_else(|_| {
-            std::env::var("USERNAME")
-                .map(|username| {
-                    format!("/home/{username}/.local/share/anime-games-launcher")
-                })
-        })
-        .map(PathBuf::from)
-        .or_else(|_| {
-            std::env::current_dir()
-                .map(|current| current.join("data"))
-        })
-        .expect("Couldn't locate data directory");
+    /// Can be overriden by `LAUNCHER_DATA_FOLDER` variable.
+    pub static ref DATA_FOLDER: PathBuf = {
+        if let Ok(path) = std::env::var("LAUNCHER_DATA_FOLDER") {
+            return PathBuf::from(path);
+        }
+
+        let path = std::env::var("XDG_DATA_HOME")
+            .map(|data| format!("{data}/anime-games-launcher"))
+            .or_else(|_| {
+                std::env::var("HOME")
+                    .map(|home| {
+                        format!("{home}/.local/share/anime-games-launcher")
+                    })
+            })
+            .or_else(|_| {
+                std::env::var("USER")
+                    .or_else(|_| std::env::var("USERNAME"))
+                    .map(|username| {
+                        format!("/home/{username}/.local/share/anime-games-launcher")
+                    })
+            })
+            .map(PathBuf::from)
+            .or_else(|_| {
+                std::env::current_dir()
+                    .map(|current| current.join("data"))
+            })
+            .expect("Couldn't locate data directory");
+
+        path.canonicalize().unwrap_or(path)
+    };
 
     /// Path to the config folder.
     ///
     /// Default is `$XDG_CONFIG_HOME/anime-games-launcher`.
-    pub static ref CONFIG_FOLDER: PathBuf = std::env::var("XDG_CONFIG_HOME")
-        .map(|config| format!("{config}/anime-games-launcher"))
-        .or_else(|_| {
-            std::env::var("HOME")
-                .map(|home| {
-                    format!("{home}/.config/anime-games-launcher")
-                })
-        })
-        .or_else(|_| {
-            std::env::var("USERNAME")
-                .map(|username| {
-                    format!("/home/{username}/.config/anime-games-launcher")
-                })
-        })
-        .map(PathBuf::from)
-        .or_else(|_| {
-            std::env::current_dir()
-                .map(|current| current.join("config"))
-        })
-        .expect("Couldn't locate config directory");
+    /// Can be overriden by `LAUNCHER_CONFIG_FOLDER` variable.
+    pub static ref CONFIG_FOLDER: PathBuf = {
+        if let Ok(path) = std::env::var("LAUNCHER_CONFIG_FOLDER") {
+            return PathBuf::from(path);
+        }
+
+        let path = std::env::var("XDG_CONFIG_HOME")
+            .map(|config| format!("{config}/anime-games-launcher"))
+            .or_else(|_| {
+                std::env::var("HOME")
+                    .map(|home| {
+                        format!("{home}/.config/anime-games-launcher")
+                    })
+            })
+            .or_else(|_| {
+                std::env::var("USER")
+                    .or_else(|_| std::env::var("USERNAME"))
+                    .map(|username| {
+                        format!("/home/{username}/.config/anime-games-launcher")
+                    })
+            })
+            .map(PathBuf::from)
+            .or_else(|_| {
+                std::env::current_dir()
+                    .map(|current| current.join("config"))
+            })
+            .expect("Couldn't locate config directory");
+
+        path.canonicalize().unwrap_or(path)
+    };
 
     /// Path to the cache folder.
     ///
     /// Default is `$XDG_CACHE_HOME/anime-games-launcher`.
-    pub static ref CACHE_FOLDER: PathBuf = std::env::var("XDG_CACHE_HOME")
-        .map(|cache| format!("{cache}/anime-games-launcher"))
-        .or_else(|_| {
-            std::env::var("HOME")
-                .map(|home| {
-                    format!("{home}/.cache/anime-games-launcher")
-                })
-        })
-        .or_else(|_| {
-            std::env::var("USERNAME")
-                .map(|username| {
-                    format!("/home/{username}/.cache/anime-games-launcher")
-                })
-        })
-        .map(PathBuf::from)
-        .or_else(|_| {
-            std::env::current_dir()
-                .map(|current| current.join("cache"))
-        })
-        .expect("Couldn't locate cache directory");
+    /// Can be overriden by `LAUNCHER_CACHE_FOLDER` variable.
+    pub static ref CACHE_FOLDER: PathBuf = {
+        if let Ok(path) = std::env::var("LAUNCHER_CACHE_FOLDER") {
+            return PathBuf::from(path);
+        }
+
+        let path = std::env::var("XDG_CACHE_HOME")
+            .map(|cache| format!("{cache}/anime-games-launcher"))
+            .or_else(|_| {
+                std::env::var("HOME")
+                    .map(|home| {
+                        format!("{home}/.cache/anime-games-launcher")
+                    })
+            })
+            .or_else(|_| {
+                std::env::var("USER")
+                    .or_else(|_| std::env::var("USERNAME"))
+                    .map(|username| {
+                        format!("/home/{username}/.cache/anime-games-launcher")
+                    })
+            })
+            .map(PathBuf::from)
+            .or_else(|_| {
+                std::env::current_dir()
+                    .map(|current| current.join("cache"))
+            })
+            .expect("Couldn't locate cache directory");
+
+        path.canonicalize().unwrap_or(path)
+    };
 
     /// Path to the config file.
     ///
