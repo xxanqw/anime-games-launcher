@@ -8,13 +8,21 @@ Heavily work in progress. Watch for development process in our discord server.
 | - | - | - |
 | <img src="repository/pictures/store.png" /> | <img src="repository/pictures/store-details.png" /> | <img src="repository/pictures/library-details.png" /> |
 
+## Builds
+
+This repository uses GitHub CI to automatically check source code on errors using the `flake.nix`.
+When new releases are pushed CI compiles release build on latest ubuntu version, prepares
+RPM, DEB and AppImage builds (which should not really be used) and publishes compiled build
+to our [cachix binary cache](https://an-anime-team.cachix.org).
+
 # Declaration of openness / Декларация открытости
 
 I believe that in a changing world it is extremely important to remain honest
 with your users. I believe in open source software, so I think it's important
 to state the following.
 
-Я верю что в меняющемся мире крайне важно оставаться честными со своими пользователями. Я верю в открытое программное обеспечение, поэтому считаю важным заявить следующее.
+Я верю что в меняющемся мире крайне важно оставаться честными со своими пользователями.
+Я верю в открытое программное обеспечение, поэтому считаю важным заявить следующее.
 
 ## English
 
