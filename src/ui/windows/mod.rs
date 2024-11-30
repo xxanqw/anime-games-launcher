@@ -15,6 +15,12 @@ pub use profile_manager::{
     ProfileManagerWindowMsg
 };
 
+pub use profile_manager::builder::{
+    ProfileBuilderWindow,
+    ProfileBuilderWindowInput,
+    ProfileBuilderWindowOutput
+};
+
 pub use download_manager::{
     DownloadManagerWindow,
     DownloadManagerWindowMsg

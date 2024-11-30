@@ -3,8 +3,8 @@ use relm4::prelude::*;
 
 use crate::prelude::*;
 
-pub mod common;
 pub mod linux;
+pub mod common;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,8 +16,8 @@ pub enum GeneralSettingsPageInput {
 
 #[derive(Debug)]
 pub struct GeneralSettingsPage {
-    common_page: AsyncController<common::CommonGeneralSettingsPage>,
     linux_page: AsyncController<linux::LinuxGeneralSettingsPage>,
+    common_page: AsyncController<common::CommonGeneralSettingsPage>,
 
     settings: GeneralProfileSettings
 }
@@ -32,24 +32,24 @@ impl SimpleAsyncComponent for GeneralSettingsPage {
         adw::PreferencesPage {
             set_title: "General",
 
-            add = model.common_page.widget(),
-
             add = &model.linux_page.widget().clone() -> adw::PreferencesGroup {
                 #[watch]
                 set_visible: matches!(model.settings, GeneralProfileSettings::Linux { .. })
-            }
+            },
+
+            add = model.common_page.widget(),
         }
     }
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
-            common_page: common::CommonGeneralSettingsPage::builder()
-                .launch(())
-                .forward(sender.input_sender(), GeneralSettingsPageInput::UpdateCommonValues),
-
             linux_page: linux::LinuxGeneralSettingsPage::builder()
                 .launch(())
                 .forward(sender.input_sender(), GeneralSettingsPageInput::UpdateLinuxValues),
+
+            common_page: common::CommonGeneralSettingsPage::builder()
+                .launch(())
+                .forward(sender.input_sender(), GeneralSettingsPageInput::UpdateCommonValues),
 
             settings: GeneralProfileSettings::default()
         };
@@ -65,13 +65,13 @@ impl SimpleAsyncComponent for GeneralSettingsPage {
                 self.settings = settings;
 
                 match self.settings.clone() {
-                    GeneralProfileSettings::Unknown(settings) => {
-                        self.common_page.emit(common::CommonGeneralSettingsPageInput::SetValues(settings));
-                    }
-
                     GeneralProfileSettings::Linux { common, linux } => {
                         self.common_page.emit(common::CommonGeneralSettingsPageInput::SetValues(common));
                         self.linux_page.emit(linux::LinuxGeneralSettingsPageInput::SetValues(linux));
+                    }
+
+                    GeneralProfileSettings::Unknown(settings) => {
+                        self.common_page.emit(common::CommonGeneralSettingsPageInput::SetValues(settings));
                     }
 
                     _ => ()

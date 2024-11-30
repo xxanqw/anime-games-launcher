@@ -3,6 +3,12 @@ use relm4::prelude::*;
 
 use crate::prelude::*;
 
+#[allow(clippy::enum_variant_names)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LinuxWineRuntimeSettingsPageInput {
+    SetValues(LinuxWineProfileRuntimeSettings)
+}
+
 #[derive(Debug, Clone)]
 pub struct LinuxWineRuntimeSettingsPage {
     settings: LinuxWineProfileRuntimeSettings
@@ -11,8 +17,8 @@ pub struct LinuxWineRuntimeSettingsPage {
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for LinuxWineRuntimeSettingsPage {
     type Init = ();
-    type Input = ();
-    type Output = ();
+    type Input = LinuxWineRuntimeSettingsPageInput;
+    type Output = LinuxWineProfileRuntimeSettings;
 
     view! {
         adw::PreferencesGroup {
@@ -28,5 +34,13 @@ impl SimpleAsyncComponent for LinuxWineRuntimeSettingsPage {
         let widgets = view_output!();
 
         AsyncComponentParts { model, widgets }
+    }
+
+    async fn update(&mut self, message: Self::Input, _sender: AsyncComponentSender<Self>) {
+        match message {
+            LinuxWineRuntimeSettingsPageInput::SetValues(settings) => {
+                self.settings = settings;
+            }
+        }
     }
 }

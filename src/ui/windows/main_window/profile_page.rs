@@ -17,8 +17,8 @@ impl AsyncFactoryComponent for ProfileFactoryComponent {
     view! {
         #[root]
         adw::ActionRow {
-            set_title: self.0.name(),
-            set_subtitle: &self.0.target_platform().to_string(),
+            set_title: &self.0.name,
+            set_subtitle: &self.0.target.to_string(),
 
             set_activatable: true,
 
@@ -57,6 +57,7 @@ pub enum ProfilePageMsg {
 
 #[derive(Debug)]
 pub struct ProfilePage {
+    builder_window: AsyncController<ProfileBuilderWindow>,
     manager_window: AsyncController<ProfileManagerWindow>,
     profiles: AsyncFactoryVecDeque<ProfileFactoryComponent>
 }
@@ -92,6 +93,10 @@ impl SimpleAsyncComponent for ProfilePage {
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
         let model = Self {
+            builder_window: ProfileBuilderWindow::builder()
+                .launch(())
+                .detach(),
+
             manager_window: ProfileManagerWindow::builder()
                 .launch(())
                 .detach(),
@@ -131,7 +136,7 @@ impl SimpleAsyncComponent for ProfilePage {
             }
 
             ProfilePageMsg::CreateProfile => {
-                self.manager_window.emit(ProfileManagerWindowMsg::OpenWindow(Profile::new("New profile")));
+                self.builder_window.emit(ProfileBuilderWindowInput::OpenWindow);
             }
 
             ProfilePageMsg::EditProfile(index) => {

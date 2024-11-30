@@ -19,7 +19,7 @@ pub enum TargetPlatform {
 impl TargetPlatform {
     #[inline]
     /// Get list of all available platforms.
-    pub fn list() -> &'static [Self] {
+    pub const fn list() -> &'static [Self] {
         &[
             Self::X86_64_windows_native,
             Self::X86_64_linux_native,
@@ -38,6 +38,40 @@ impl TargetPlatform {
             Self::from_str(&format!("{arch}-windows-native")).ok()
         } else {
             Self::from_str(&format!("{arch}-linux-native")).ok()
+        }
+    }
+
+    /// Suggest platform that should be emulated by the current target platform.
+    ///
+    /// | Current platform        | Suggested platform      |
+    /// | ----------------------- | ----------------------- |
+    /// | `x86_64-windows-native` | `x86_64-windows-native` |
+    /// | `x86_64-linux-native`   | `x86_64-linux-wine64`   |
+    /// | `x86_64-linux-wine32`   | `x86_64-linux-wine32`   |
+    /// | `x86_64-linux-wine64`   | `x86_64-linux-wine64`   |
+    pub const fn suggested_emulation(&self) -> Self {
+        match self {
+            TargetPlatform::X86_64_windows_native => TargetPlatform::X86_64_windows_native,
+            TargetPlatform::X86_64_linux_native   => TargetPlatform::X86_64_linux_wine64,
+            TargetPlatform::X86_64_linux_wine32   => TargetPlatform::X86_64_linux_wine32,
+            TargetPlatform::X86_64_linux_wine64   => TargetPlatform::X86_64_linux_wine64
+        }
+    }
+
+    /// Suggest platform that could emulate current platform.
+    ///
+    /// | Current platform        | Suggested platform      |
+    /// | ----------------------- | ----------------------- |
+    /// | `x86_64-windows-native` | `x86_64-windows-native` |
+    /// | `x86_64-linux-native`   | `x86_64-linux-native`   |
+    /// | `x86_64-linux-wine32`   | `x86_64-linux-native`   |
+    /// | `x86_64-linux-wine64`   | `x86_64-linux-native`   |
+    pub const fn suggested_emulator(&self) -> Self {
+        match self {
+            TargetPlatform::X86_64_windows_native => TargetPlatform::X86_64_windows_native,
+            TargetPlatform::X86_64_linux_native   => TargetPlatform::X86_64_linux_native,
+            TargetPlatform::X86_64_linux_wine32   => TargetPlatform::X86_64_linux_native,
+            TargetPlatform::X86_64_linux_wine64   => TargetPlatform::X86_64_linux_native
         }
     }
 }

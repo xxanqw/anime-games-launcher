@@ -1,27 +1,18 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
+pub mod builder;
 pub mod general;
 pub mod runtime;
 
 use crate::prelude::*;
 
-static mut WINDOW: Option<adw::PreferencesWindow> = None;
-
-#[relm4::widget_template(pub)]
-impl WidgetTemplate for ComboSwitchRow {
-    view! {
-        adw::ComboRow {
-            add_suffix = &gtk::Switch {
-                set_valign: gtk::Align::Center
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ProfileManagerWindow {
+    window: Option<adw::PreferencesWindow>,
+
     general_page: AsyncController<general::GeneralSettingsPage>,
+    runtime_page: AsyncController<runtime::RuntimeSettingsPage>,
 
     profile: Option<Profile>
 }
@@ -29,14 +20,17 @@ pub struct ProfileManagerWindow {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProfileManagerWindowMsg {
     OpenWindow(Profile),
-    CloseWindow
+    CloseWindow,
+
+    UpdateGeneralSettings(GeneralProfileSettings),
+    UpdateRuntimeSettings(RuntimeProfileSettings)
 }
 
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for ProfileManagerWindow {
     type Init = ();
     type Input = ProfileManagerWindowMsg;
-    type Output = ();
+    type Output = Profile;
 
     view! {
         #[root]
@@ -49,105 +43,61 @@ impl SimpleAsyncComponent for ProfileManagerWindow {
 
             add_css_class?: crate::APP_DEBUG.then_some("devel"),
 
-            add = &adw::PreferencesPage {
-                set_title: "Profile",
-
-                add = &adw::PreferencesGroup {
-                    set_title: "Profile",
-
-                    adw::EntryRow {
-                        set_title: "Profile name",
-
-                        #[watch]
-                        set_text: model.profile.as_ref()
-                            .map(|profile| profile.name())
-                            .unwrap_or_default()
-                    },
-
-                    adw::ComboRow {
-                        set_title: "Platform",
-                        set_subtitle: "Environment emulated by this profile",
-
-                        set_model: Some(&{
-                            let list = gtk::StringList::new(&[]);
-
-                            for platform in TargetPlatform::list() {
-                                list.append(&platform.to_string());
-                            }
-
-                            list
-                        }),
-
-                        #[watch]
-                        set_selected?: model.profile.as_ref()
-                            .and_then(|profile| {
-                                TargetPlatform::list()
-                                    .iter()
-                                    .position(|platform| platform == profile.target_platform())
-                                    .map(|pos| pos as u32)
-                            }),
-
-                        connect_selected_notify[sender] => move |combo_row| {
-                            // sender.input();
-                        }
-                    }
-                }
-            },
-
             add = model.general_page.widget(),
-
-            add = &adw::PreferencesPage {
-                set_title: "Runtime",
-
-                add = &adw::PreferencesGroup {
-                    set_title: "Profile info",
-
-                    adw::EntryRow {
-                        set_title: "Profile name"
-                    },
-
-                    adw::SwitchRow {
-                        set_title: "Set default",
-                        set_subtitle: "Use this profile by default with newly installed games"
-                    }
-                }
-            }
+            add = model.runtime_page.widget(),
         }
     }
 
     async fn init(_init: Self::Init, root: Self::Root, sender: AsyncComponentSender<Self>) -> AsyncComponentParts<Self> {
-        let model = Self {
+        let mut model = Self {
+            window: None,
+
             general_page: general::GeneralSettingsPage::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), ProfileManagerWindowMsg::UpdateGeneralSettings),
+
+            runtime_page: runtime::RuntimeSettingsPage::builder()
+                .launch(())
+                .forward(sender.input_sender(), ProfileManagerWindowMsg::UpdateRuntimeSettings),
 
             profile: None
         };
 
         let widgets = view_output!();
 
-        unsafe {
-            WINDOW = Some(widgets.window.clone());
-        }
+        model.window = Some(widgets.window.clone());
 
         AsyncComponentParts { model, widgets }
     }
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
         match msg {
-            ProfileManagerWindowMsg::OpenWindow(profile) => unsafe {
-                self.general_page.emit(general::GeneralSettingsPageInput::SetValues(profile.general_settings().clone()));
+            ProfileManagerWindowMsg::OpenWindow(profile) => {
+                self.general_page.emit(general::GeneralSettingsPageInput::SetValues(profile.general.clone()));
+                self.runtime_page.emit(runtime::RuntimeSettingsPageInput::SetValues(profile.runtime.clone()));
 
                 self.profile = Some(profile);
 
-                if let Some(window) = WINDOW.as_ref() {
+                if let Some(window) = self.window.as_ref() {
                     window.present();
                 }
             }
 
-            ProfileManagerWindowMsg::CloseWindow => unsafe {
-                if let Some(window) = WINDOW.as_ref() {
+            ProfileManagerWindowMsg::CloseWindow => {
+                if let Some(window) = self.window.as_ref() {
                     window.close();
+                }
+            }
+
+            ProfileManagerWindowMsg::UpdateGeneralSettings(settings) => {
+                if let Some(profile) = &mut self.profile {
+                    profile.general = settings;
+                }
+            }
+
+            ProfileManagerWindowMsg::UpdateRuntimeSettings(settings) => {
+                if let Some(profile) = &mut self.profile {
+                    profile.runtime = settings;
                 }
             }
         }
