@@ -50,7 +50,8 @@ impl AsyncFactoryComponent for ProfileFactoryComponent {
 #[derive(Debug, Clone)]
 pub enum ProfilePageMsg {
     UpdateProfiles,
-    CreateProfile,
+    OpenNewProfileDialog,
+    CreateProfile(Profile),
     EditProfile(DynamicIndex),
     DeleteProfile(DynamicIndex)
 }
@@ -83,7 +84,7 @@ impl SimpleAsyncComponent for ProfilePage {
 
                     set_tooltip_text: Some("Create new profile"),
 
-                    connect_clicked => ProfilePageMsg::CreateProfile
+                    connect_clicked => ProfilePageMsg::OpenNewProfileDialog
                 },
 
                 model.profiles.widget(),
@@ -95,7 +96,7 @@ impl SimpleAsyncComponent for ProfilePage {
         let model = Self {
             builder_window: ProfileBuilderWindow::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), ProfilePageMsg::CreateProfile),
 
             manager_window: ProfileManagerWindow::builder()
                 .launch(())
@@ -135,8 +136,12 @@ impl SimpleAsyncComponent for ProfilePage {
                 }
             }
 
-            ProfilePageMsg::CreateProfile => {
+            ProfilePageMsg::OpenNewProfileDialog => {
                 self.builder_window.emit(ProfileBuilderWindowInput::OpenWindow);
+            }
+
+            ProfilePageMsg::CreateProfile(profile) => {
+                dbg!(profile);
             }
 
             ProfilePageMsg::EditProfile(index) => {

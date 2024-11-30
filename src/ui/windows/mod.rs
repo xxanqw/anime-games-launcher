@@ -17,8 +17,7 @@ pub use profile_manager::{
 
 pub use profile_manager::builder::{
     ProfileBuilderWindow,
-    ProfileBuilderWindowInput,
-    ProfileBuilderWindowOutput
+    ProfileBuilderWindowInput
 };
 
 pub use download_manager::{

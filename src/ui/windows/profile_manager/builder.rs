@@ -18,16 +18,11 @@ pub enum ProfileBuilderWindowInput {
     EmitClick
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ProfileBuilderWindowOutput {
-    NewProfile(Profile)
-}
-
 #[relm4::component(pub, async)]
 impl SimpleAsyncComponent for ProfileBuilderWindow {
     type Init = ();
     type Input = ProfileBuilderWindowInput;
-    type Output = ProfileBuilderWindowOutput;
+    type Output = Profile;
 
     view! {
         #[root]
@@ -199,7 +194,7 @@ impl SimpleAsyncComponent for ProfileBuilderWindow {
                     }
                 };
 
-                let _ = sender.output(ProfileBuilderWindowOutput::NewProfile(profile));
+                let _ = sender.output(profile);
 
                 if let Some(window) = &self.window {
                     window.close();
