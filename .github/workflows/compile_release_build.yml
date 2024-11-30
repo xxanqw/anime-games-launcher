@@ -49,6 +49,25 @@ jobs:
           name: ubuntu-native-build
           path: target/release/anime-games-launcher
 
+  update_binary_cache:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: cachix/cachix-action@v14
+        with:
+          name: an-anime-team
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Compile release build
+        run: nix build --accept-flake-config
+
   bundle_nixos_build:
     runs-on: ubuntu-latest
 
