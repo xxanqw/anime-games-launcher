@@ -25,7 +25,14 @@ pub struct Packages {
     /// It is used by the modules to store shared
     /// information. Paths in the persistent store
     /// are indexed using public keys.
-    pub persist_store: PersistStore
+    pub persist_store: PersistStore,
+
+    /// Information about the temporary store.
+    ///
+    /// It is used by the modules to store temporary
+    /// information. Files in this store are eventually
+    /// deleted by the garbage collection task.
+    pub temp_store: TempStore
 }
 
 impl AsJson for Packages {
@@ -33,7 +40,8 @@ impl AsJson for Packages {
         Ok(json!({
             "resources_store": self.resources_store.to_json()?,
             "modules_store": self.modules_store.to_json()?,
-            "persist_store": self.persist_store.to_json()?
+            "persist_store": self.persist_store.to_json()?,
+            "temp_store": self.temp_store.to_json()?
         }))
     }
 
@@ -49,7 +57,11 @@ impl AsJson for Packages {
 
             persist_store: json.get("persist_store")
                 .map(PersistStore::from_json)
-                .ok_or_else(|| AsJsonError::FieldNotFound("packages.persist_store"))??
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages.persist_store"))??,
+
+            temp_store: json.get("temp_store")
+                .map(TempStore::from_json)
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages.temp_store"))??
         })
     }
 }
@@ -152,6 +164,40 @@ impl AsJson for PersistStore {
                 .as_str()
                 .map(PathBuf::from)
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("packages.persist_store.path"))?
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct TempStore {
+    /// Path to the temporary store.
+    pub path: PathBuf
+}
+
+impl Default for TempStore {
+    fn default() -> Self {
+        Self {
+            path: DATA_FOLDER
+                .join("packages")
+                .join("temp_store")
+        }
+    }
+}
+
+impl AsJson for TempStore {
+    fn to_json(&self) -> Result<Json, AsJsonError> {
+        Ok(json!({
+            "path": self.path
+        }))
+    }
+
+    fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        Ok(Self {
+            path: json.get("path")
+                .ok_or_else(|| AsJsonError::FieldNotFound("packages.temp_store.path"))?
+                .as_str()
+                .map(PathBuf::from)
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("packages.temp_store.path"))?
         })
     }
 }

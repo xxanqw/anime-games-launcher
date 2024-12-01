@@ -48,15 +48,12 @@ impl<'lua> PackagesEngine<'lua> {
         // Prepare standard folders.
         let config = config::get();
 
-        let temp_folder = std::env::temp_dir()
-            .join(".agl-modules-temp"); // TODO: make a separate launcher-global temp folder
-
         if !config.packages.persist_store.path.exists() {
             std::fs::create_dir_all(&config.packages.persist_store.path)?;
         }
 
-        if !temp_folder.exists() {
-            std::fs::create_dir_all(&temp_folder)?;
+        if !config.packages.temp_store.path.exists() {
+            std::fs::create_dir_all(&config.packages.temp_store.path)?;
         }
 
         // Prepare modules standard implementations.
@@ -137,9 +134,9 @@ impl<'lua> PackagesEngine<'lua> {
 
                     // Prepare special environment for the module.
                     let env = v1_standard.create_env(&v1_standard::Context {
-                        temp_folder: temp_folder.clone(),
-                        module_folder,
+                        temp_folder: config.packages.temp_store.path.clone(),
                         persistent_folder: config.packages.persist_store.path.clone(),
+                        module_folder,
 
                         // TODO: implement packages authorities system
                         ext_process_api: false
