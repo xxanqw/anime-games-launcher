@@ -83,6 +83,16 @@ impl Store {
         Ok(profiles)
     }
 
+    /// Try to read profile with the given ID.
+    pub fn read(&self, profile: &Hash) -> Result<Profile, StoreError> {
+        let path = self.get_path(profile);
+
+        let profile = std::fs::read(path)?;
+        let profile = serde_json::from_slice::<Json>(&profile)?;
+
+        Ok(Profile::from_json(&profile)?)
+    }
+
     /// Insert profile to the store.
     pub fn insert(&self, profile: &Profile) -> Result<(), StoreError> {
         let path = self.get_path(&profile.id);

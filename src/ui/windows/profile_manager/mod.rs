@@ -70,7 +70,7 @@ impl SimpleAsyncComponent for ProfileManagerWindow {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             ProfileManagerWindowMsg::OpenWindow(profile) => {
                 self.general_page.emit(general::GeneralSettingsPageInput::SetValues(profile.general.clone()));
@@ -92,12 +92,16 @@ impl SimpleAsyncComponent for ProfileManagerWindow {
             ProfileManagerWindowMsg::UpdateGeneralSettings(settings) => {
                 if let Some(profile) = &mut self.profile {
                     profile.general = settings;
+
+                    let _ = sender.output(profile.clone());
                 }
             }
 
             ProfileManagerWindowMsg::UpdateRuntimeSettings(settings) => {
                 if let Some(profile) = &mut self.profile {
                     profile.runtime = settings;
+
+                    let _ = sender.output(profile.clone());
                 }
             }
         }

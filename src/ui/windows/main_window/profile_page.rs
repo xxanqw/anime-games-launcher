@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use adw::prelude::*;
 use relm4::prelude::*;
 
@@ -17,7 +19,10 @@ impl AsyncFactoryComponent for ProfileFactoryComponent {
     view! {
         #[root]
         adw::ActionRow {
+            #[watch]
             set_title: &self.0.name,
+
+            #[watch]
             set_subtitle: &self.0.target.to_string(),
 
             set_activatable: true,
@@ -36,7 +41,7 @@ impl AsyncFactoryComponent for ProfileFactoryComponent {
             },
 
             connect_activated[sender, index] => move |_| {
-                let _ = sender.output(ProfilePageMsg::EditProfile(index.clone()));
+                let _ = sender.output(ProfilePageMsg::OpenProfileManagerDialog(index.clone()));
             },
         }
     }
@@ -51,8 +56,8 @@ impl AsyncFactoryComponent for ProfileFactoryComponent {
 pub enum ProfilePageMsg {
     UpdateProfiles,
     OpenNewProfileDialog,
-    CreateProfile(Profile),
-    EditProfile(DynamicIndex),
+    OpenProfileManagerDialog(DynamicIndex),
+    InsertProfile(Profile),
     DeleteProfile(DynamicIndex)
 }
 
@@ -60,7 +65,10 @@ pub enum ProfilePageMsg {
 pub struct ProfilePage {
     builder_window: AsyncController<ProfileBuilderWindow>,
     manager_window: AsyncController<ProfileManagerWindow>,
-    profiles: AsyncFactoryVecDeque<ProfileFactoryComponent>
+
+    profiles: AsyncFactoryVecDeque<ProfileFactoryComponent>,
+
+    profile_hashes: HashMap<Hash, DynamicIndex>
 }
 
 #[relm4::component(pub, async)]
@@ -96,15 +104,17 @@ impl SimpleAsyncComponent for ProfilePage {
         let model = Self {
             builder_window: ProfileBuilderWindow::builder()
                 .launch(())
-                .forward(sender.input_sender(), ProfilePageMsg::CreateProfile),
+                .forward(sender.input_sender(), ProfilePageMsg::InsertProfile),
 
             manager_window: ProfileManagerWindow::builder()
                 .launch(())
-                .detach(),
+                .forward(sender.input_sender(), ProfilePageMsg::InsertProfile),
 
             profiles: AsyncFactoryVecDeque::builder()
                 .launch_default()
-                .forward(sender.input_sender(), std::convert::identity)
+                .forward(sender.input_sender(), std::convert::identity),
+
+            profile_hashes: HashMap::new()
         };
 
         sender.input(ProfilePageMsg::UpdateProfiles);
@@ -125,10 +135,11 @@ impl SimpleAsyncComponent for ProfilePage {
                     Ok(profiles) => {
                         let mut guard = self.profiles.guard();
 
+                        self.profile_hashes.clear();
                         guard.clear();
 
                         for profile in profiles {
-                            guard.push_back(profile);
+                            self.profile_hashes.insert(*profile.id(), guard.push_back(profile));
                         }
                     }
 
@@ -136,11 +147,7 @@ impl SimpleAsyncComponent for ProfilePage {
                 }
             }
 
-            ProfilePageMsg::OpenNewProfileDialog => {
-                self.builder_window.emit(ProfileBuilderWindowInput::OpenWindow);
-            }
-
-            ProfilePageMsg::CreateProfile(profile) => {
+            ProfilePageMsg::InsertProfile(profile) => {
                 let config = config::get();
 
                 let store = ProfilesStore::new(config.profiles.store.path);
@@ -150,7 +157,7 @@ impl SimpleAsyncComponent for ProfilePage {
                         tracing::info!(
                             id = profile.id().to_base32(),
                             name = profile.name,
-                            "Added new profile"
+                            "Updated profile"
                         );
 
                         sender.input(ProfilePageMsg::UpdateProfiles);
@@ -160,18 +167,64 @@ impl SimpleAsyncComponent for ProfilePage {
                         id = profile.id().to_base32(),
                         name = profile.name,
                         ?err,
-                        "Failed to add new profile"
+                        "Failed to update profile"
                     )
                 }
             }
 
-            ProfilePageMsg::EditProfile(index) => {
-                if let Some(profile) = self.profiles.guard().get(index.current_index()) {
-                    self.manager_window.emit(ProfileManagerWindowMsg::OpenWindow(profile.0.clone()));
+            ProfilePageMsg::OpenNewProfileDialog => unsafe {
+                if let Some(window) = MAIN_WINDOW.as_ref() {
+                    self.builder_window.widget().set_transient_for(Some(window));
+                }
+
+                self.builder_window.emit(ProfileBuilderWindowInput::OpenWindow);
+            }
+
+            ProfilePageMsg::OpenProfileManagerDialog(index) => {
+                let config = config::get();
+
+                let store = ProfilesStore::new(config.profiles.store.path);
+
+                let mut guard = self.profiles.guard();
+                let index = index.current_index();
+
+                if let Some(profile_component) = guard.get_mut(index) {
+                    let id = profile_component.0.id().to_owned();
+
+                    match store.read(&id) {
+                        Ok(profile) => {
+                            if profile_component.0 != profile {
+                                profile_component.0 = profile.clone();
+
+                                tracing::info!(
+                                    id = id.to_base32(),
+                                    "Profile was updated on the disk. Updated UI element"
+                                );
+                            }
+
+                            unsafe {
+                                if let Some(window) = MAIN_WINDOW.as_ref() {
+                                    self.manager_window.widget().set_transient_for(Some(window));
+                                }
+
+                                self.manager_window.emit(ProfileManagerWindowMsg::OpenWindow(profile));
+                            }
+                        }
+
+                        Err(err) => {
+                            tracing::warn!(
+                                id = id.to_base32(),
+                                ?err,
+                                "Failed to open profile manager because it was deleted from the disk"
+                            );
+
+                            guard.remove(index);
+                        }
+                    }
                 }
             }
 
-            ProfilePageMsg::DeleteProfile(index) => ()
+            ProfilePageMsg::DeleteProfile(index) => todo!("Profile deletion is not implemented yet: {index:#?}")
         }
     }
 }
