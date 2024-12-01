@@ -114,7 +114,7 @@ impl SimpleAsyncComponent for ProfilePage {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+    async fn update(&mut self, msg: Self::Input, sender: AsyncComponentSender<Self>) {
         match msg {
             ProfilePageMsg::UpdateProfiles => {
                 let config = config::get();
@@ -141,7 +141,28 @@ impl SimpleAsyncComponent for ProfilePage {
             }
 
             ProfilePageMsg::CreateProfile(profile) => {
-                dbg!(profile);
+                let config = config::get();
+
+                let store = ProfilesStore::new(config.profiles.store.path);
+
+                match store.insert(&profile) {
+                    Ok(_) => {
+                        tracing::info!(
+                            id = profile.id().to_base32(),
+                            name = profile.name,
+                            "Added new profile"
+                        );
+
+                        sender.input(ProfilePageMsg::UpdateProfiles);
+                    }
+
+                    Err(err) => tracing::error!(
+                        id = profile.id().to_base32(),
+                        name = profile.name,
+                        ?err,
+                        "Failed to add new profile"
+                    )
+                }
             }
 
             ProfilePageMsg::EditProfile(index) => {

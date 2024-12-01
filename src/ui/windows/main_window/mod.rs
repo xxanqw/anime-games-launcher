@@ -251,7 +251,8 @@ impl SimpleAsyncComponent for MainWindow {
                 tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.resources_store.path),
                 tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.modules_store.path),
                 tokio::fs::create_dir_all(&STARTUP_CONFIG.packages.persist_store.path),
-                tokio::fs::create_dir_all(&STARTUP_CONFIG.generations.store.path)
+                tokio::fs::create_dir_all(&STARTUP_CONFIG.generations.store.path),
+                tokio::fs::create_dir_all(&STARTUP_CONFIG.profiles.store.path)
             )?;
 
             // Update the config file to create it
