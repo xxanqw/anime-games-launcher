@@ -154,7 +154,7 @@ impl SimpleAsyncComponent for ProfilePage {
 
                 match store.insert(&profile) {
                     Ok(_) => {
-                        tracing::info!(
+                        tracing::debug!(
                             id = profile.id().to_base32(),
                             name = profile.name,
                             "Updated profile"
@@ -196,7 +196,7 @@ impl SimpleAsyncComponent for ProfilePage {
                             if profile_component.0 != profile {
                                 profile_component.0 = profile.clone();
 
-                                tracing::info!(
+                                tracing::debug!(
                                     id = id.to_base32(),
                                     "Profile was updated on the disk. Updated UI element"
                                 );

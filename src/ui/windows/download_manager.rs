@@ -194,7 +194,7 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
                 .launch(GraphInit {
                     width: 600,
                     height: 300,
-                    window_size: 200,
+                    window_size: 60,
                     color: (1.0, 0.0, 0.0)
                 })
                 .detach(),

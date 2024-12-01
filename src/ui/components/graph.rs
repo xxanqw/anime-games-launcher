@@ -64,6 +64,9 @@ impl Graph {
         context.set_source_rgba(1.0, 1.0, 1.0, 0.15);
         context.set_dash(&[4.0, 4.0], 0.0);
 
+        // TODO: draw Bézier splines here.
+        // context.curve_...
+
         context.move_to(OFFSET, height - (OFFSET + y_scale * self.mean_point as f64));
         context.line_to(width - OFFSET, height - (OFFSET + y_scale * self.mean_point as f64));
 
