@@ -89,6 +89,9 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
 
+                    set_margin_top: 32,
+                    set_margin_bottom: 32,
+
                     gtk::Label {
                         set_align: gtk::Align::Start,
 
@@ -111,7 +114,10 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
                         set_tooltip?: model.action_description.as_deref()
                     },
 
-                    model.graph.widget(),
+                    model.graph.widget() {
+                        set_margin_top: 24,
+                        set_margin_bottom: 24,
+                    },
 
                     #[local_ref]
                     progress_bar -> gtk::ProgressBar {
@@ -171,7 +177,7 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
             //             //             DownloadsAppState::StreamUnpacking => "Total unpacked",
             //             //             DownloadsAppState::Verifying => "Total verified",
             //             //         },
-    
+
             //             //         #[watch]
             //             //         set_subtitle: &pretty_bytes(model.total).0.to_string(),
             //             //     }
@@ -311,7 +317,7 @@ impl SimpleAsyncComponent for DownloadManagerWindow {
 
                         Box::new(move |progress| {
                             let _ = sender.send(DownloadManagerWindowMsg::UpdateProgress(progress));
-    
+
                             true
                         })
                     }
