@@ -33,12 +33,15 @@ jobs:
           apt update
           apt install -y git curl build-essential libgtk-4-dev libadwaita-1-dev
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Download rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
 
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Compile release build
         run: cargo build --release --verbose
@@ -57,9 +60,14 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
+
       - uses: cachix/cachix-action@v14
         with:
           name: an-anime-team
@@ -76,7 +84,11 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
@@ -85,7 +97,6 @@ jobs:
 
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
-
         with:
           name: nixos-deb-build
           compression-level: 9
@@ -96,7 +107,6 @@ jobs:
 
       - name: Upload RPM package
         uses: actions/upload-artifact@v4
-
         with:
           name: nixos-rpm-build
           compression-level: 9
@@ -107,7 +117,6 @@ jobs:
 
       - name: Upload AppImage package
         uses: actions/upload-artifact@v4
-
         with:
           name: nixos-appimage-build
           compression-level: 9
