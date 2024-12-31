@@ -45,24 +45,18 @@ type Manifest = {
         // to execute the integration script.
         runtime: {
             // Platform native for the integration script.
-            // In most cases it's x86_64-windows-native
+            // In most cases it's `x86_64-windows-native`.
             //
             // Game will be executed without additional compatibility layers
             // if the current platform is native for it.
             platform: TargetPlatform,
 
-            // Required features of the native platform.
-            features?: PlatformFeature[],
-
             // Target platforms supported by the integration script.
-            // In most cases it's x86_64-linux-wine64 with no required features.
+            // In most cases it's `x86_64-linux-wine64`.
             //
             // If the current platform is not native for the game, but it's supported
             // then the game will be run using special compatibility tools.
-            supported?: {
-                platform: TargetPlatform,
-                features?: PlatformFeature[]
-            }[]
+            supported_platforms?: TargetPlatform[]
         }
     },
 
@@ -89,10 +83,6 @@ type TargetPlatform =
 
     // x86_64 windows game which can be run on linux via 64 bit wine.
     | 'x86_64-linux-wine64';
-
-type PlatformFeature =
-    // Any installed DXVK version.
-    | 'wine-dxvk';
 
 type HardwareRequirements = {
     cpu?: {
