@@ -14,6 +14,7 @@ pub mod cache;
 pub mod packages;
 pub mod generations;
 pub mod games;
+pub mod components;
 pub mod profiles;
 
 pub mod i18n;
@@ -34,6 +35,7 @@ pub mod prelude {
     pub use super::packages::prelude::*;
     pub use super::generations::prelude::*;
     pub use super::games::prelude::*;
+    pub use super::components::prelude::*;
     pub use super::profiles::prelude::*;
     pub use super::ui::prelude::*;
 
