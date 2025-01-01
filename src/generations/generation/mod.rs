@@ -87,7 +87,7 @@ impl Generation {
             let temp_hash = Hash::rand();
             let temp_path = generations_store.get_temp_path(&temp_hash);
 
-            let context = Downloader::new(&url)?
+            let context = Downloader::new(url)?
                 .with_continue_downloading(false)
                 .with_output_file(&temp_path)
                 .download(|_, _, _| {})
@@ -128,7 +128,7 @@ impl Generation {
             let temp_hash = Hash::rand();
             let temp_path = generations_store.get_temp_path(&temp_hash);
 
-            let context = Downloader::new(&url)?
+            let context = Downloader::new(url)?
                 .with_continue_downloading(false)
                 .with_output_file(&temp_path)
                 .download(|_, _, _| {})
@@ -167,8 +167,7 @@ impl Generation {
             .build(packages_store)
             .await?;
 
-        // TODO
-        Ok(GenerationManifest::compose(games, vec![], lock_file))
+        Ok(GenerationManifest::compose(games, components, lock_file))
     }
 }
 
@@ -202,9 +201,9 @@ mod tests {
 
         assert_eq!(generation.games.len(), 1);
         assert_eq!(generation.components.len(), 1);
-        assert_eq!(&generation.lock_file.root, &[0]);
+        assert_eq!(generation.lock_file.root.iter().copied().sum::<u32>(), 1); // 0 + 1
         assert_eq!(generation.lock_file.resources.len(), 10);
-        assert_eq!(Hash::for_entry(path)?, Hash(5516354445018355056));
+        assert_eq!(Hash::for_entry(path)?, Hash(3241624005879532019));
 
         Ok(())
     }
