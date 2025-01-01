@@ -79,10 +79,10 @@ impl TargetPlatform {
 impl std::fmt::Display for TargetPlatform {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::X86_64_windows_native => write!(f, "x86_64-windows-native"),
-            Self::X86_64_linux_native   => write!(f, "x86_64-linux-native"),
-            Self::X86_64_linux_wine32   => write!(f, "x86_64-linux-wine32"),
-            Self::X86_64_linux_wine64   => write!(f, "x86_64-linux-wine64")
+            Self::X86_64_windows_native => f.write_str("x86_64-windows-native"),
+            Self::X86_64_linux_native   => f.write_str("x86_64-linux-native"),
+            Self::X86_64_linux_wine32   => f.write_str("x86_64-linux-wine32"),
+            Self::X86_64_linux_wine64   => f.write_str("x86_64-linux-wine64")
         }
     }
 }

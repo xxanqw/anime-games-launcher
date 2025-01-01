@@ -2,8 +2,6 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
-use crate::prelude::*;
-
 use super::*;
 
 #[derive(Debug, Clone)]

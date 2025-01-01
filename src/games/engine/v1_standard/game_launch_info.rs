@@ -4,8 +4,6 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
-use crate::prelude::*;
-
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,10 +36,44 @@ impl Default for GameLaunchInfo {
     }
 }
 
-impl TryFrom<&LuaTable<'_>> for GameLaunchInfo {
-    type Error = LuaError;
+impl<'lua> AsLua<'lua> for GameLaunchInfo {
+    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+        let table = lua.create_table_with_capacity(0, 5)?;
 
-    fn try_from(value: &LuaTable<'_>) -> Result<Self, Self::Error> {
+        table.set("status", lua.create_string(self.status.to_string())?)?;
+        table.set("binary", lua.create_string(self.binary.to_string_lossy().to_string())?)?;
+
+        if let Some(hint) = &self.hint {
+            table.set("hint", hint.to_lua(lua)?)?;
+        }
+
+        if let Some(args) = &self.args {
+            let lua_args = lua.create_table_with_capacity(args.len(), 0)?;
+
+            for arg in args {
+                lua_args.push(lua.create_string(arg)?)?;
+            }
+
+            table.set("args", lua_args)?;
+        }
+
+        if let Some(env) = &self.env {
+            let lua_env = lua.create_table_with_capacity(0, env.len())?;
+
+            for (k, v) in env {
+                lua_env.set(lua.create_string(k)?, lua.create_string(v)?)?;
+            }
+
+            table.set("env", lua_env)?;
+        }
+
+        Ok(LuaValue::Table(table))
+    }
+
+    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+        let value = value.as_table()
+            .ok_or_else(|| AsLuaError::InvalidFieldValue("<game launch info>"))?;
+
         Ok(Self {
             status: value.get::<_, LuaString>("status")
                 .map(|status| GameLaunchStatus::from_str(&status.to_string_lossy()))

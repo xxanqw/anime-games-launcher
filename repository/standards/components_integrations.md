@@ -52,7 +52,7 @@ type ComponentsGroup = {
     title: Localizable,
 
     // Description of the group displayed in UI.
-    description: Localizable
+    description?: Localizable
 };
 
 type Component = {
@@ -63,13 +63,7 @@ type Component = {
     title: Localizable,
 
     // Description of the component displayed in UI.
-    description: Localizable,
-
-    // Check if the current component is downloaded.
-    // This will be used to display the list of available components.
-    // Downloaded components don't necessary mean *valid* components.
-    // This can be a half-broken one or an outdated component.
-    is_downloaded: (): boolean
+    description?: Localizable
 };
 ```
 

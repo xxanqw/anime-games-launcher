@@ -2,6 +2,8 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
+use crate::prelude::*;
+
 mod game_edition;
 mod game_component;
 mod game_launch_status;
@@ -88,8 +90,9 @@ impl<'lua> GameIntegration<'lua> {
     }
 
     /// Get params used to launch the game.
-    pub fn game_launch_info(&self, edition: impl AsRef<str>) -> Result<GameLaunchInfo, LuaError> {
-        self.game_get_launch_info.call::<_, LuaTable>(edition.as_ref())
-            .and_then(|info| GameLaunchInfo::try_from(&info))
+    pub fn game_launch_info(&self, edition: impl AsRef<str>) -> Result<GameLaunchInfo, AsLuaError> {
+        self.game_get_launch_info.call::<_, LuaValue>(edition.as_ref())
+            .map_err(AsLuaError::LuaError)
+            .and_then(|info| GameLaunchInfo::from_lua(&info))
     }
 }

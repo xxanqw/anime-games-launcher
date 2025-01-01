@@ -1,5 +1,7 @@
 use mlua::prelude::*;
 
+use crate::prelude::*;
+
 pub mod v1_standard;
 
 pub use v1_standard::{
@@ -61,7 +63,7 @@ impl<'lua> GameEngine<'lua> {
 
     #[inline]
     /// Get params used to launch the game.
-    pub fn game_launch_info(&self, edition: impl AsRef<str>) -> Result<GameLaunchInfo, LuaError> {
+    pub fn game_launch_info(&self, edition: impl AsRef<str>) -> Result<GameLaunchInfo, AsLuaError> {
         match self {
             Self::V1(engine) => engine.game_launch_info(edition)
         }

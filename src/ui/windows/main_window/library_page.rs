@@ -298,7 +298,7 @@ impl SimpleAsyncComponent for LibraryPage {
                                             }
 
                                             SyncGameCommand::GetLaunchInfo { edition, listener } => {
-                                                let _ = listener.send(game.game_launch_info(edition));
+                                                let _ = listener.send(game.game_launch_info(edition).map_err(LuaError::from));
                                             }
 
                                             // TODO: handle errors

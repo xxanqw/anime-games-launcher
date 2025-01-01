@@ -1,7 +1,5 @@
 use mlua::prelude::*;
 
-use crate::prelude::*;
-
 use super::*;
 
 #[derive(Debug, Clone)]
