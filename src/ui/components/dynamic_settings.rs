@@ -13,7 +13,7 @@ impl DynamicSettingsComponentGroup {
     pub fn new(
         title: Option<impl AsRef<str>>,
         description: Option<impl AsRef<str>>,
-        components: impl Iterator<Item = (String, DynamicSettingsComponentRow)>
+        components: impl IntoIterator<Item = (String, DynamicSettingsComponentRow)>
     ) -> Self {
         let group = adw::PreferencesGroup::new();
         let components = HashMap::from_iter(components);
@@ -82,7 +82,7 @@ impl DynamicSettingsComponentRow {
     pub fn new_enum(
         title: impl AsRef<str>,
         description: Option<impl AsRef<str>>,
-        values: impl Iterator<Item = (String, String)>,
+        values: impl IntoIterator<Item = (String, String)>,
         default: impl AsRef<str>
     ) -> Self {
         let component = adw::ComboRow::new();

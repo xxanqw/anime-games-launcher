@@ -176,9 +176,10 @@ mod tests {
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_none());
         assert!(!generations_store.has_generation(&Hash(535491346813091909)));
 
-        let generation = Generation::with_games([
-            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/games/1.json"
-        ]);
+        let generation = Generation::default()
+            .with_games([
+                "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/games/1.json"
+            ]);
 
         let generation = generation.build(&packages_store, &generations_store).await
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
@@ -190,7 +191,7 @@ mod tests {
 
         generations_store.insert(&generation)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
-        
+
         assert!(generations_store.list().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
         assert!(generations_store.latest().map_err(|err| anyhow::anyhow!(err.to_string()))?.is_some());
         assert!(generations_store.has_generation(&Hash(11380745776938094419)));

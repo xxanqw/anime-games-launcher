@@ -17,6 +17,7 @@ pub mod prelude {
 
     pub use super::generation::manifest::{
         Manifest as GenerationManifest,
-        Game as GenerationGameLock
+        GameLock as GenerationGameLock,
+        ComponentLock as GenerationComponentLock
     };
 }

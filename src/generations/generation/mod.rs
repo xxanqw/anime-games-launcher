@@ -2,11 +2,7 @@ use std::collections::HashSet;
 
 use serde_json::Value as Json;
 
-use crate::core::prelude::*;
-use crate::packages::prelude::*;
-use crate::games::prelude::*;
-
-use super::prelude::*;
+use crate::prelude::*;
 
 pub mod manifest;
 
@@ -30,46 +26,64 @@ pub enum GenerationError {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Generation {
-    /// URLs to the games manifests for the generation file.
-    manifest_urls: HashSet<String>
+    /// URLs to the games manifests.
+    games_manifests: HashSet<String>,
+
+    /// URLs to the components manifests.
+    components_manifests: HashSet<String>
 }
 
 impl Generation {
     #[inline]
-    /// Create new empty generations file.
-    pub fn new() -> Self {
+    /// Create new generation file from the provided links.
+    ///
+    /// Use `Generation::default` if you want an empty generation.
+    pub fn new<T: ToString>(games: impl IntoIterator<Item = T>, components: impl IntoIterator<Item = T>) -> Self {
         Self {
-            manifest_urls: HashSet::new(),
+            games_manifests: games.into_iter()
+                .map(|url| url.to_string())
+                .collect(),
+
+            components_manifests: components.into_iter()
+                .map(|url| url.to_string())
+                .collect()
         }
     }
 
-    #[inline]
-    /// Create new generations file with given games manifests URLs.
-    pub fn with_games<T: Into<String>>(manifests: impl IntoIterator<Item = T>) -> Self {
-        Self {
-            manifest_urls: HashSet::from_iter(manifests.into_iter().map(T::into)),
-        }
-    }
-
-    #[inline]
-    /// Add game manifest URL.
-    pub fn add_game(&mut self, url: impl ToString) -> &mut Self {
-        self.manifest_urls.insert(url.to_string());
+    /// Change URLs to the components manifests.
+    pub fn with_games<T: ToString>(mut self, urls: impl IntoIterator<Item = T>) -> Self {
+        self.games_manifests = urls.into_iter()
+            .map(|url| url.to_string())
+            .collect();
 
         self
     }
 
-    /// Build new generation from provided URLs
-    /// to the games' manifests.
+    /// Change URLs to the components manifests.
+    pub fn with_components<T: ToString>(mut self, urls: impl IntoIterator<Item = T>) -> Self {
+        self.components_manifests = urls.into_iter()
+            .map(|url| url.to_string())
+            .collect();
+
+        self
+    }
+
+    /// Build new generation from provided URLs.
     ///
     /// Note: This is a heavy function which executes
-    /// lock file building internally. You should
-    /// run it in background.
+    /// lock file building internally. It's expected
+    /// to run it in background.
     pub async fn build(&self, packages_store: &PackagesStore, generations_store: &GenerationsStore) -> Result<GenerationManifest, GenerationError> {
-        let mut games_contexts = Vec::with_capacity(self.manifest_urls.len());
+        // Prepare set of packages to be locked.
+        let mut packages = HashSet::with_capacity(
+            self.games_manifests.len() +
+            self.components_manifests.len()
+        );
 
         // Start downloading all added games' manifests.
-        for url in self.manifest_urls.clone() {
+        let mut games_contexts = Vec::with_capacity(self.games_manifests.len());
+
+        for url in &self.games_manifests {
             let temp_hash = Hash::rand();
             let temp_path = generations_store.get_temp_path(&temp_hash);
 
@@ -79,11 +93,10 @@ impl Generation {
                 .download(|_, _, _| {})
                 .await?;
 
-            games_contexts.push((url, temp_path, context));
+            games_contexts.push((url.clone(), temp_path, context));
         }
 
-        // Await game manifests and store game packages URLs.
-        let mut packages = HashSet::with_capacity(games_contexts.len());
+        // Await games' manifests and store game packages URLs.
         let mut games = Vec::with_capacity(games_contexts.len());
 
         for (url, temp_path, context) in games_contexts.drain(..) {
@@ -98,11 +111,52 @@ impl Generation {
             // Delete it.
             std::fs::remove_file(temp_path)?;
 
-            // Store the manifest and the game's package URL
+            // Store the manifest and the game package's URL
             // to build a lock file.
             packages.insert(manifest.package.url.clone());
 
             games.push(GenerationGameLock {
+                url,
+                manifest
+            });
+        }
+
+        // Start downloading all added components' manifests.
+        let mut components_contexts = Vec::with_capacity(self.components_manifests.len());
+
+        for url in &self.components_manifests {
+            let temp_hash = Hash::rand();
+            let temp_path = generations_store.get_temp_path(&temp_hash);
+
+            let context = Downloader::new(&url)?
+                .with_continue_downloading(false)
+                .with_output_file(&temp_path)
+                .download(|_, _, _| {})
+                .await?;
+
+            components_contexts.push((url.clone(), temp_path, context));
+        }
+
+        // Await components' manifests and store component packages URLs.
+        let mut components = Vec::with_capacity(components_contexts.len());
+
+        for (url, temp_path, context) in components_contexts.drain(..) {
+            // Await manifest download finish.
+            context.wait()?;
+
+            // Parse the manifest file.
+            let manifest = std::fs::read(&temp_path)?;
+            let manifest = serde_json::from_slice::<Json>(&manifest)?;
+            let manifest = ComponentsVariantManifest::from_json(&manifest)?;
+
+            // Delete it.
+            std::fs::remove_file(temp_path)?;
+
+            // Store the manifest and the component package's URL
+            // to build a lock file.
+            packages.insert(manifest.package.url.clone());
+
+            components.push(GenerationComponentLock {
                 url,
                 manifest
             });
@@ -136,15 +190,20 @@ mod tests {
         let packages_store = PackagesStore::new(&path);
         let generations_store = GenerationsStore::new(&path);
 
-        let generation = Generation::with_games([
-            "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/games/1.json"
-        ]);
+        let generation = Generation::default()
+            .with_games([
+                "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/games/1.json"
+            ])
+            .with_components([
+                "https://raw.githubusercontent.com/an-anime-team/anime-games-launcher/next/tests/components/variant.json"
+            ]);
 
         let generation = generation.build(&packages_store, &generations_store).await?;
 
         assert_eq!(generation.games.len(), 1);
+        assert_eq!(generation.components.len(), 1);
         assert_eq!(&generation.lock_file.root, &[0]);
-        assert_eq!(generation.lock_file.resources.len(), 8);
+        assert_eq!(generation.lock_file.resources.len(), 10);
         assert_eq!(Hash::for_entry(path)?, Hash(5516354445018355056));
 
         Ok(())

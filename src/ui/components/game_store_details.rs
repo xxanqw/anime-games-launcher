@@ -91,7 +91,7 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                     set_text: "About"
                                 },
-    
+
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
 
@@ -145,18 +145,18 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
-    
+
                                     add_css_class: "dim-label",
-    
+
                                     #[watch]
                                     set_text: &format!("Developer: {}", model.developer)
                                 },
-    
+
                                 gtk::Label {
                                     set_align: gtk::Align::Start,
-    
+
                                     add_css_class: "dim-label",
-    
+
                                     #[watch]
                                     set_text: &format!("Publisher: {}", model.publisher)
                                 }
@@ -307,25 +307,29 @@ impl SimpleAsyncComponent for GameStoreDetails {
 
                 tracing::trace!("Preparing locked games list");
 
-                let games = match generation {
+                let (games, components) = match generation {
                     Some(generation) => {
                         let mut games = generation.games.into_iter()
                             .map(|game| game.url)
                             .collect::<Vec<_>>();
 
+                        let components = generation.components.into_iter()
+                            .map(|component| component.url)
+                            .collect::<Vec<_>>();
+
                         games.push(self.game_url.clone());
 
-                        games
+                        (games, components)
                     }
 
-                    None => vec![
-                        self.game_url.clone()
-                    ]
+                    None => (vec![self.game_url.clone()], vec![])
                 };
 
                 tracing::trace!(?games, "Building new generation");
 
-                let generation = Generation::with_games(games)
+                let generation = Generation::default()
+                    .with_games(games)
+                    .with_components(components)
                     .build(&packages_store, &generations_store)
                     .await;
 

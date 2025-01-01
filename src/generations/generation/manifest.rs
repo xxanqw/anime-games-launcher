@@ -1,8 +1,6 @@
 use serde_json::{json, Value as Json};
 
-use crate::core::prelude::*;
-use crate::games::prelude::*;
-use crate::packages::prelude::*;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Manifest {
@@ -13,10 +11,10 @@ pub struct Manifest {
     pub generated_at: u64,
 
     /// List of games added by the user.
-    pub games: Vec<Game>,
+    pub games: Vec<GameLock>,
 
     /// List of components added by the user.
-    pub components: Vec<Component>,
+    pub components: Vec<ComponentLock>,
 
     /// Lock file of the game integration packages.
     pub lock_file: LockFileManifest
@@ -24,12 +22,16 @@ pub struct Manifest {
 
 impl Manifest {
     /// Compose new generation manifest from given parts.
-    pub fn compose(games: impl Into<Vec<Game>>, components: impl Into<Vec<Component>>, lock_file: LockFileManifest) -> Self {
+    pub fn compose(
+        games: impl IntoIterator<Item = GameLock>,
+        components: impl IntoIterator<Item = ComponentLock>,
+        lock_file: LockFileManifest
+    ) -> Self {
         Self {
             format: 1,
             generated_at: lock_file.metadata.generated_at,
-            games: games.into(),
-            components: components.into(),
+            games: games.into_iter().collect(),
+            components: components.into_iter().collect(),
             lock_file
         }
     }
@@ -42,11 +44,11 @@ impl AsJson for Manifest {
             "generated_at": self.generated_at,
 
             "games": self.games.iter()
-                .map(Game::to_json)
+                .map(GameLock::to_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
             "components": self.components.iter()
-                .map(Component::to_json)
+                .map(ComponentLock::to_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
             "lock_file": self.lock_file.to_json()?
@@ -70,7 +72,7 @@ impl AsJson for Manifest {
                 .as_array()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("games"))?
                 .iter()
-                .map(Game::from_json)
+                .map(GameLock::from_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
             components: json.get("components")
@@ -78,7 +80,7 @@ impl AsJson for Manifest {
                 .as_array()
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("components"))?
                 .iter()
-                .map(Component::from_json)
+                .map(ComponentLock::from_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
             lock_file: json.get("lock_file")
@@ -104,7 +106,7 @@ impl AsHash for Manifest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Game {
+pub struct GameLock {
     /// URL of the game's manifest.
     pub url: String,
 
@@ -112,7 +114,7 @@ pub struct Game {
     pub manifest: GameManifest
 }
 
-impl AsJson for Game {
+impl AsJson for GameLock {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
             "url": self.url,
@@ -135,7 +137,7 @@ impl AsJson for Game {
     }
 }
 
-impl AsHash for Game {
+impl AsHash for GameLock {
     #[inline]
     fn hash(&self) -> Hash {
         self.url.hash().chain(self.manifest.hash())
@@ -143,15 +145,15 @@ impl AsHash for Game {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Component {
+pub struct ComponentLock {
     /// URL of the component's manifest.
     pub url: String,
 
     /// Fetched manifest of the component.
-    pub manifest: GameManifest
+    pub manifest: ComponentsVariantManifest
 }
 
-impl AsJson for Component {
+impl AsJson for ComponentLock {
     fn to_json(&self) -> Result<Json, AsJsonError> {
         Ok(json!({
             "url": self.url,
@@ -168,13 +170,13 @@ impl AsJson for Component {
                 .to_string(),
 
             manifest: json.get("manifest")
-                .map(GameManifest::from_json)
+                .map(ComponentsVariantManifest::from_json)
                 .ok_or_else(|| AsJsonError::FieldNotFound("components[].manifest"))??
         })
     }
 }
 
-impl AsHash for Component {
+impl AsHash for ComponentLock {
     #[inline]
     fn hash(&self) -> Hash {
         self.url.hash().chain(self.manifest.hash())

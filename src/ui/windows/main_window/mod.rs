@@ -380,6 +380,7 @@ impl SimpleAsyncComponent for MainWindow {
             let mut generations = generations_store.list()?.unwrap_or_default();
 
             let mut games = None;
+            let mut components = None;
             let mut valid_generation = None;
 
             // Iterate over available generations, from newest to oldest,
@@ -398,7 +399,16 @@ impl SimpleAsyncComponent for MainWindow {
 
                 // Save the added games.
                 if games.is_none() {
-                    games = Some(generation.games.clone());
+                    games = Some(generation.games.iter()
+                        .map(|game| game.url.clone())
+                        .collect::<Vec<_>>());
+                }
+
+                // Save the added components variants.
+                if components.is_none() {
+                    components = Some(generation.components.iter()
+                        .map(|component| component.url.clone())
+                        .collect::<Vec<_>>());
                 }
 
                 // Validate the generation.
@@ -422,9 +432,11 @@ impl SimpleAsyncComponent for MainWindow {
             let new_generation_task = tokio::spawn(async move {
                 tracing::debug!("Building the new generation");
 
-                let generation = match games {
-                    Some(games) => Generation::with_games(games.into_iter().map(|game| game.url)),
-                    None => Generation::new()
+                let generation = match (games, components) {
+                    (Some(games), Some(components)) => Generation::new(games, components),
+                    (Some(games), None)             => Generation::new(games, vec![]),
+                    (None, Some(components))        => Generation::new(vec![], components),
+                    (None, None)                    => Generation::default()
                 };
 
                 let generation = generation.build(&packages_store, &generations_store).await
