@@ -9,8 +9,8 @@ pub mod prelude {
     pub use super::registry::Manifest as ComponentsRegistryManifest;
 
     pub use super::engine::{
-        ComponentEngine,
-        ComponentGroup,
-        Component
+        ProfileComponentEngine,
+        ProfileComponentsGroup,
+        ProfileComponent
     };
 }

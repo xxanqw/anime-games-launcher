@@ -4,10 +4,10 @@ use mlua::prelude::*;
 
 use crate::prelude::*;
 
-pub mod component_group;
+pub mod components_group;
 pub mod component;
 
-pub use component_group::*;
+pub use components_group::*;
 pub use component::*;
 
 #[derive(Debug, Clone)]
@@ -47,23 +47,23 @@ impl<'lua> ComponentIntegration<'lua> {
     }
 
     /// Get list of available component groups.
-    pub fn groups(&self, source_platform: TargetPlatform, target_platform: TargetPlatform) -> Result<Vec<ComponentGroup>, AsLuaError> {
+    pub fn groups(&self, source_platform: TargetPlatform, target_platform: TargetPlatform) -> Result<Vec<ProfileComponentsGroup>, AsLuaError> {
         self.groups.call::<_, Vec<LuaValue>>((source_platform.to_string(), target_platform.to_string()))
             .map_err(AsLuaError::LuaError)
             .and_then(|groups| {
                 groups.iter()
-                    .map(ComponentGroup::from_lua)
+                    .map(ProfileComponentsGroup::from_lua)
                     .collect::<Result<Vec<_>, _>>()
             })
     }
 
     /// Get list of components within the group.
-    pub fn components(&self, group_name: impl AsRef<str>) -> Result<Vec<Component>, AsLuaError> {
+    pub fn components(&self, group_name: impl AsRef<str>) -> Result<Vec<ProfileComponent>, AsLuaError> {
         self.components.call::<_, Vec<LuaValue>>(group_name.as_ref())
             .map_err(AsLuaError::LuaError)
             .and_then(|components| {
                 components.iter()
-                    .map(Component::from_lua)
+                    .map(ProfileComponent::from_lua)
                     .collect::<Result<Vec<_>, _>>()
             })
     }

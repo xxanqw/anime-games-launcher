@@ -5,17 +5,17 @@ use crate::prelude::*;
 pub mod v1_standard;
 
 pub use v1_standard::{
-    ComponentGroup,
-    Component
+    ProfileComponentsGroup,
+    ProfileComponent
 };
 
 #[derive(Debug, Clone)]
 /// Unified wrapper around component integration standards.
-pub enum ComponentEngine<'lua> {
+pub enum ProfileComponentEngine<'lua> {
     V1(v1_standard::ComponentIntegration<'lua>)
 }
 
-impl<'lua> ComponentEngine<'lua> {
+impl<'lua> ProfileComponentEngine<'lua> {
     pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
         match table.get::<_, u32>("standard")? {
             1 => Ok(Self::V1(v1_standard::ComponentIntegration::from_lua(lua, table)?)),
@@ -26,7 +26,7 @@ impl<'lua> ComponentEngine<'lua> {
 
     #[inline]
     /// Get list of available component groups.
-    pub fn groups(&self, source_platform: TargetPlatform, target_platform: TargetPlatform) -> Result<Vec<ComponentGroup>, AsLuaError> {
+    pub fn groups(&self, source_platform: TargetPlatform, target_platform: TargetPlatform) -> Result<Vec<ProfileComponentsGroup>, AsLuaError> {
         match self {
             Self::V1(engine) => engine.groups(source_platform, target_platform)
         }
@@ -34,7 +34,7 @@ impl<'lua> ComponentEngine<'lua> {
 
     #[inline]
     /// Get list of components within the group.
-    pub fn components(&self, group_name: impl AsRef<str>) -> Result<Vec<Component>, AsLuaError> {
+    pub fn components(&self, group_name: impl AsRef<str>) -> Result<Vec<ProfileComponent>, AsLuaError> {
         match self {
             Self::V1(engine) => engine.components(group_name)
         }

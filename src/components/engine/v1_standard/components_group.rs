@@ -3,13 +3,13 @@ use mlua::prelude::*;
 use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ComponentGroup {
+pub struct ProfileComponentsGroup {
     pub name: String,
     pub title: LocalizableString,
     pub description: Option<LocalizableString>
 }
 
-impl<'lua> AsLua<'lua> for ComponentGroup {
+impl<'lua> AsLua<'lua> for ProfileComponentsGroup {
     fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
         let table = lua.create_table_with_capacity(0, 3)?;
 
