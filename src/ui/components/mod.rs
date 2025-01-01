@@ -7,6 +7,7 @@ pub mod graph;
 
 pub mod game_store_details;
 pub mod hardware_requirements;
+pub mod dynamic_settings;
 
 pub use lazy_picture::{
     ImagePath,
@@ -54,6 +55,13 @@ pub use hardware_requirements::{
     HardwareRequirementsComponentMsg,
     HardwareRequirementsSection,
     HardwareRequirementsSectionMsg
+};
+
+pub use dynamic_settings::{
+    DynamicSettingsComponentRow,
+    DynamicSettingsComponent,
+    DynamicSettingsComponentInput,
+    DynamicSettingsComponentOutput
 };
 
 // FIXME: NOT REFACTORED
