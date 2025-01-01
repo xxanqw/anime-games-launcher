@@ -15,17 +15,21 @@ pub struct Manifest {
     /// List of games added by the user.
     pub games: Vec<Game>,
 
+    /// List of components added by the user.
+    pub components: Vec<Component>,
+
     /// Lock file of the game integration packages.
     pub lock_file: LockFileManifest
 }
 
 impl Manifest {
     /// Compose new generation manifest from given parts.
-    pub fn compose(games: impl Into<Vec<Game>>, lock_file: LockFileManifest) -> Self {
+    pub fn compose(games: impl Into<Vec<Game>>, components: impl Into<Vec<Component>>, lock_file: LockFileManifest) -> Self {
         Self {
             format: 1,
             generated_at: lock_file.metadata.generated_at,
             games: games.into(),
+            components: components.into(),
             lock_file
         }
     }
@@ -39,6 +43,10 @@ impl AsJson for Manifest {
 
             "games": self.games.iter()
                 .map(Game::to_json)
+                .collect::<Result<Vec<_>, _>>()?,
+
+            "components": self.components.iter()
+                .map(Component::to_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
             "lock_file": self.lock_file.to_json()?
@@ -63,6 +71,14 @@ impl AsJson for Manifest {
                 .ok_or_else(|| AsJsonError::InvalidFieldValue("games"))?
                 .iter()
                 .map(Game::from_json)
+                .collect::<Result<Vec<_>, _>>()?,
+
+            components: json.get("components")
+                .ok_or_else(|| AsJsonError::FieldNotFound("components"))?
+                .as_array()
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("components"))?
+                .iter()
+                .map(Component::from_json)
                 .collect::<Result<Vec<_>, _>>()?,
 
             lock_file: json.get("lock_file")
@@ -120,6 +136,45 @@ impl AsJson for Game {
 }
 
 impl AsHash for Game {
+    #[inline]
+    fn hash(&self) -> Hash {
+        self.url.hash().chain(self.manifest.hash())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Component {
+    /// URL of the component's manifest.
+    pub url: String,
+
+    /// Fetched manifest of the component.
+    pub manifest: GameManifest
+}
+
+impl AsJson for Component {
+    fn to_json(&self) -> Result<Json, AsJsonError> {
+        Ok(json!({
+            "url": self.url,
+            "manifest": self.manifest.to_json()?
+        }))
+    }
+
+    fn from_json(json: &Json) -> Result<Self, AsJsonError> where Self: Sized {
+        Ok(Self {
+            url: json.get("url")
+                .ok_or_else(|| AsJsonError::FieldNotFound("components[].url"))?
+                .as_str()
+                .ok_or_else(|| AsJsonError::InvalidFieldValue("components[].url"))?
+                .to_string(),
+
+            manifest: json.get("manifest")
+                .map(GameManifest::from_json)
+                .ok_or_else(|| AsJsonError::FieldNotFound("components[].manifest"))??
+        })
+    }
+}
+
+impl AsHash for Component {
     #[inline]
     fn hash(&self) -> Hash {
         self.url.hash().chain(self.manifest.hash())

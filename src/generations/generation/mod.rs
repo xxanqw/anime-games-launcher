@@ -113,7 +113,8 @@ impl Generation {
             .build(packages_store)
             .await?;
 
-        Ok(GenerationManifest::compose(games, lock_file))
+        // TODO
+        Ok(GenerationManifest::compose(games, vec![], lock_file))
     }
 }
 

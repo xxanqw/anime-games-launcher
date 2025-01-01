@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use unic_langid::{langid, LanguageIdentifier};
 
 fluent_templates::static_loader! {
@@ -22,11 +24,11 @@ lazy_static::lazy_static! {
     /// if system one is not supported.
     static ref DEFAULT_LANGUAGE: LanguageIdentifier = SUPPORTED_LANGUAGES.iter()
         .find(|lang| SYSTEM_LANGUAGE.starts_with(lang.language.as_str()))
-        .unwrap_or_else(|| unsafe { get_lang() })
-        .clone();
+        .cloned()
+        .unwrap_or_else(get_lang);
 }
 
-/// Map of supported languages
+/// Map of supported languages.
 pub const SUPPORTED_LANGUAGES: &[LanguageIdentifier] = &[
     langid!("en-us"),
     langid!("ru-ru"),
@@ -35,30 +37,30 @@ pub const SUPPORTED_LANGUAGES: &[LanguageIdentifier] = &[
     langid!("zh-cn")
 ];
 
-static mut LANG: LanguageIdentifier = langid!("en-us");
+static LANG: Mutex<LanguageIdentifier> = Mutex::new(langid!("en-us"));
 
-/// Set launcher language
+/// Set launcher language.
 pub fn set_language(lang: LanguageIdentifier) -> anyhow::Result<()> {
-    if SUPPORTED_LANGUAGES.iter().any(|item| item.language == lang.language) {
-        unsafe {
-            LANG = lang
-        }
+    let supported_lang = SUPPORTED_LANGUAGES.iter()
+        .find(|item| item.language == lang.language);
 
-        return Ok(());
-    }
+    let Some(lang) = supported_lang else {
+        anyhow::bail!("Language '{lang}' is not supported");
+    };
 
-    anyhow::bail!("Language '{lang}' is not supported");
+    *LANG.lock().expect("Failed to lock launcher language") = lang.to_owned();
+
+    Ok(())
 }
 
-#[allow(clippy::missing_safety_doc)]
-/// Get launcher language
-pub unsafe fn get_lang<'a>() -> &'a LanguageIdentifier {
-    LANG.as_ref()
+/// Get launcher language.
+pub fn get_lang() -> LanguageIdentifier {
+    LANG.lock().expect("Failed to lock launcher language").clone()
 }
 
-/// Format given language to `<language>-<country>` format
+/// Format given language to `<language>-<country>` format.
 ///
-/// Example: `en-us`, `ru-ru`
+/// Example: `en-us`, `ru-ru`.
 pub fn format_language(lang: &LanguageIdentifier) -> String {
     format!("{}-{}", lang.language, match lang.region {
         Some(region) => region.to_string().to_ascii_lowercase(),
@@ -67,7 +69,7 @@ pub fn format_language(lang: &LanguageIdentifier) -> String {
 }
 
 #[macro_export]
-/// Get translated message by key, with optional translation parameters
+/// Get translated message by key, with optional translation parameters.
 ///
 /// # Examples:
 ///

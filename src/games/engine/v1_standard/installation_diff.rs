@@ -1,6 +1,6 @@
 use mlua::prelude::*;
 
-use crate::games::prelude::*;
+use crate::prelude::*;
 
 use super::*;
 
@@ -15,14 +15,15 @@ impl<'lua> InstallationDiff<'lua> {
     pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
         Ok(Self {
             title: table.get::<_, LuaValue>("title")
-                .and_then(|title| LocalizableString::try_from(&title))?,
+                .map_err(AsLuaError::LuaError)
+                .and_then(|title| LocalizableString::from_lua(&title))?,
 
             description: table.get::<_, LuaValue>("description")
-                .map(|desc| {
+                .map(|desc| -> Result<Option<LocalizableString>, LuaError> {
                     if desc.is_nil() || desc.is_null() {
                         Ok(None)
                     } else {
-                        LocalizableString::try_from(&desc).map(Some)
+                        Ok(Some(LocalizableString::from_lua(&desc)?))
                     }
                 })
                 .unwrap_or(Ok(None))?,

@@ -1,4 +1,5 @@
 pub mod json;
+pub mod lua;
 pub mod network;
 pub mod archives;
 
@@ -6,6 +7,11 @@ pub mod prelude {
     pub use super::json::{
         AsJson,
         AsJsonError
+    };
+
+    pub use super::lua::{
+        AsLua,
+        AsLuaError
     };
 
     pub use super::network::downloader::{

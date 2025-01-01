@@ -1,6 +1,6 @@
 use mlua::prelude::*;
 
-use crate::games::prelude::*;
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct ProgressReport<'lua> {
@@ -16,7 +16,7 @@ pub struct ProgressReport<'lua> {
     progress_format: Option<LuaFunction<'lua>>
 }
 
-impl<'lua> ProgressReport<'lua> {
+impl ProgressReport<'_> {
     #[inline]
     /// Return `current / total` fraction.
     pub fn fraction(&self) -> f64 {
@@ -31,33 +31,57 @@ impl<'lua> ProgressReport<'lua> {
 
         let str = format.call::<_, LuaValue>(())?;
 
-        LocalizableString::try_from(&str).map(Some)
+        Ok(Some(LocalizableString::from_lua(&str)?))
     }
 }
 
-impl<'lua> TryFrom<&LuaTable<'lua>> for ProgressReport<'lua> {
-    type Error = LuaError;
+impl<'lua> AsLua<'lua> for ProgressReport<'lua> {
+    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+        let progress = lua.create_table()?;
 
-    fn try_from(value: &LuaTable<'lua>) -> Result<Self, Self::Error> {
+        if let Some(title) = &self.title {
+            progress.set("title", title.to_lua(lua)?)?;
+        }
+
+        if let Some(description) = &self.description {
+            progress.set("description", description.to_lua(lua)?)?;
+        }
+
+        let progress_details = lua.create_table()?;
+
+        progress_details.set("current", self.progress_current)?;
+        progress_details.set("total", self.progress_total)?;
+
+        if let Some(format) = &self.progress_format {
+            progress_details.set("format", format)?;
+        }
+
+        Ok(LuaValue::Table(progress))
+    }
+
+    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+        let value = value.as_table()
+            .ok_or_else(|| AsLuaError::InvalidFieldValue("<progress report>"))?;
+
         let progress = value.get::<_, LuaTable>("progress")?;
 
         Ok(Self {
             title: value.get::<_, LuaValue>("title")
-                .map(|title| {
+                .map(|title| -> Result<Option<LocalizableString>, AsLuaError> {
                     if title.is_nil() || title.is_null() {
                         Ok(None)
                     } else {
-                        LocalizableString::try_from(&title).map(Some)
+                        Ok(Some(LocalizableString::from_lua(&title)?))
                     }
                 })
                 .unwrap_or(Ok(None))?,
 
             description: value.get::<_, LuaValue>("description")
-                .map(|desc| {
-                    if desc.is_nil() || desc.is_null() {
+                .map(|title| -> Result<Option<LocalizableString>, AsLuaError> {
+                    if title.is_nil() || title.is_null() {
                         Ok(None)
                     } else {
-                        LocalizableString::try_from(&desc).map(Some)
+                        Ok(Some(LocalizableString::from_lua(&title)?))
                     }
                 })
                 .unwrap_or(Ok(None))?,

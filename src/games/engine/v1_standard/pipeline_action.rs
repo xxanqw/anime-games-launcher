@@ -1,6 +1,6 @@
 use mlua::prelude::*;
 
-use crate::games::prelude::*;
+use crate::prelude::*;
 
 use super::*;
 
@@ -22,14 +22,15 @@ impl<'lua> PipelineAction<'lua> {
             lua,
 
             title: table.get::<_, LuaValue>("title")
-                .and_then(|title| LocalizableString::try_from(&title))?,
+                .map_err(AsLuaError::LuaError)
+                .and_then(|title| LocalizableString::from_lua(&title))?,
 
             description: table.get::<_, LuaValue>("description")
-                .map(|desc| {
+                .map(|desc| -> Result<Option<LocalizableString>, LuaError> {
                     if desc.is_nil() || desc.is_null() {
                         Ok(None)
                     } else {
-                        LocalizableString::try_from(&desc).map(Some)
+                        Ok(Some(LocalizableString::from_lua(&desc)?))
                     }
                 })
                 .unwrap_or(Ok(None))?,
@@ -53,7 +54,7 @@ impl<'lua> PipelineAction<'lua> {
     }
 
     /// Call `before` hook if it's specified.
-    /// 
+    ///
     /// If `true` is returned, then the action should be started.
     /// If `false`, then the action should be skipped.
     pub fn before(&self, progress: impl Fn(ProgressReport) -> bool + 'static) -> Result<Option<bool>, LuaError> {
@@ -61,8 +62,8 @@ impl<'lua> PipelineAction<'lua> {
             return Ok(None);
         };
 
-        let progress = self.lua.create_function(move |_, report: LuaTable| {
-            Ok(progress(ProgressReport::try_from(&report)?))
+        let progress = self.lua.create_function(move |_, report: LuaValue| {
+            Ok(progress(ProgressReport::from_lua(&report)?))
         })?;
 
         before.call::<_, bool>(progress).map(Some)
@@ -70,8 +71,8 @@ impl<'lua> PipelineAction<'lua> {
 
     /// Perform the action.
     pub fn perform(&self, progress: impl Fn(ProgressReport) + 'static) -> Result<(), LuaError> {
-        let progress = self.lua.create_function(move |_, report: LuaTable| {
-            progress(ProgressReport::try_from(&report)?);
+        let progress = self.lua.create_function(move |_, report: LuaValue| {
+            progress(ProgressReport::from_lua(&report)?);
 
             Ok(())
         })?;
@@ -80,7 +81,7 @@ impl<'lua> PipelineAction<'lua> {
     }
 
     /// Call `after` hook if it's specified.
-    /// 
+    ///
     /// If `true` is returned, then the pipeline should continue execution.
     /// If `false`, then all the following actions should be skipped.
     pub fn after(&self, progress: impl Fn(ProgressReport) -> bool + 'static) -> Result<Option<bool>, LuaError> {
@@ -88,8 +89,8 @@ impl<'lua> PipelineAction<'lua> {
             return Ok(None);
         };
 
-        let progress = self.lua.create_function(move |_, report: LuaTable| {
-            Ok(progress(ProgressReport::try_from(&report)?))
+        let progress = self.lua.create_function(move |_, report: LuaValue| {
+            Ok(progress(ProgressReport::from_lua(&report)?))
         })?;
 
         after.call::<_, bool>(progress).map(Some)

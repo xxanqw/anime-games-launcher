@@ -1,6 +1,6 @@
 use mlua::prelude::*;
 
-use crate::games::prelude::*;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameEdition {
@@ -21,7 +21,8 @@ impl TryFrom<&LuaTable<'_>> for GameEdition {
                 .to_string(),
 
             title: value.get::<_, LuaValue>("title")
-                .and_then(|title| LocalizableString::try_from(&title))?
+                .map_err(AsLuaError::LuaError)
+                .and_then(|title| LocalizableString::from_lua(&title))?
         })
     }
 }

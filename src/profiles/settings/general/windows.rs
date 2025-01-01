@@ -4,7 +4,6 @@ use crate::prelude::*;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 /// General settings for windows.
-
 pub struct Settings;
 
 impl AsJson for Settings {

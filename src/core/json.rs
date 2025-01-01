@@ -8,6 +8,9 @@ pub enum AsJsonError {
     #[error("Invalid field value: {0}")]
     InvalidFieldValue(&'static str),
 
+    #[error("Unsupported format version: {0}")]
+    UnsupportedFormat(u64),
+
     #[error(transparent)]
     Other(#[from] Box<dyn std::error::Error + Send + Sync + 'static>)
 }

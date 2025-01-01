@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
-use crate::games::prelude::*;
+use crate::prelude::*;
 
 use super::*;
 
@@ -31,10 +31,12 @@ impl<'lua> GameComponent<'lua> {
                 .to_string(),
 
             title: table.get::<_, LuaValue>("title")
-                .and_then(|title| LocalizableString::try_from(&title))?,
+                .map_err(AsLuaError::LuaError)
+                .and_then(|title| LocalizableString::from_lua(&title))?,
 
             description: table.get::<_, LuaValue>("description")
-                .map(|desc| LocalizableString::try_from(&desc).map(Some))
+                .map_err(AsLuaError::LuaError)
+                .map(|desc| LocalizableString::from_lua(&desc).map(Some))
                 .unwrap_or(Ok(None))?,
 
             required: table.get::<_, LuaValue>("required").ok(),
@@ -64,7 +66,7 @@ impl<'lua> GameComponent<'lua> {
     }
 
     /// Try to check if the component is required.
-    /// 
+    ///
     /// If set, then component will be forcely installed.
     pub fn required(&self) -> Result<Option<bool>, LuaError> {
         let Some(required) = &self.required else {
@@ -81,7 +83,7 @@ impl<'lua> GameComponent<'lua> {
     }
 
     /// Try to get priority of the component.
-    /// 
+    ///
     /// When specified, components with greater value
     /// are installed (updated) first.
     pub fn priority(&self) -> Result<Option<u32>, LuaError> {

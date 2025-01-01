@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use mlua::prelude::*;
 
-use crate::games::prelude::*;
+use crate::prelude::*;
 
 use super::*;
 
@@ -48,7 +48,7 @@ impl TryFrom<&LuaTable<'_>> for GameLaunchInfo {
                 .unwrap_or_else(|_| Ok(GameLaunchStatus::default()))?,
 
             hint: value.get::<_, LuaValue>("hint")
-                .map(|hint| LocalizableString::try_from(&hint).map(Some))
+                .map(|hint| LocalizableString::from_lua(&hint).map(Some))
                 .unwrap_or(Ok(None))?,
 
             binary: value.get::<_, LuaString>("binary")

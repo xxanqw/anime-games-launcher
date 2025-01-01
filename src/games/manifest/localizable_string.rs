@@ -1,11 +1,22 @@
 use std::collections::HashMap;
 
 use serde_json::{json, Value as Json};
-use unic_langid::{langid, LanguageIdentifier};
 use mlua::prelude::*;
 
-use crate::core::prelude::*;
-use crate::packages::prelude::*;
+use unic_langid::{langid, LanguageIdentifier};
+
+use crate::prelude::*;
+
+// Get lowercase string from the language identifier.
+fn lang_code(lang: &LanguageIdentifier) -> String {
+    let language = lang.language.to_string()
+        .to_ascii_lowercase();
+
+    match lang.region {
+        Some(region) => format!("{language}-{}", region.as_str().to_ascii_lowercase()),
+        None => language
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalizableString {
@@ -15,7 +26,7 @@ pub enum LocalizableString {
 
 impl LocalizableString {
     /// Create new raw localizable string.
-    /// 
+    ///
     /// ```
     /// let string = LocalizableString::raw("Hello, World!");
     /// ```
@@ -24,10 +35,10 @@ impl LocalizableString {
     }
 
     /// Create new translatable string.
-    /// 
+    ///
     /// ```
     /// use unic_langid::langid;
-    /// 
+    ///
     /// let string = LocalizableString::translatable([
     ///     (langid!("en"), String::from("Hello, World!")),
     ///     (langid!("ru"), String::from("Привет, Мир!"))
@@ -70,44 +81,11 @@ impl LocalizableString {
 
     #[inline]
     /// Get default translation of the string.
-    /// 
+    ///
     /// Will either return the raw value, English
     /// variant or a stub string.
     pub fn default_translation(&self) -> &str {
         self.translate(&langid!("en"))
-    }
-}
-
-impl TryFrom<&LuaValue<'_>> for LocalizableString {
-    type Error = LuaError;
-
-    fn try_from(value: &LuaValue) -> Result<Self, Self::Error> {
-        if let Some(translations) = value.as_table() {
-            let mut result = HashMap::with_capacity(translations.raw_len());
-
-            for pair in translations.clone().pairs::<LuaString, LuaString>() {
-                let (lang, value) = pair?;
-
-                let lang = lang.to_string_lossy()
-                    .parse::<LanguageIdentifier>()
-                    .map_err(LuaError::external)?;
-
-                let value = value.to_string_lossy()
-                    .to_string();
-
-                result.insert(lang, value);
-            }
-
-            Ok(Self::translatable(result))
-        }
-
-        else if let Some(value) = value.as_string_lossy() {
-            Ok(Self::raw(value))
-        }
-
-        else {
-            Err(LuaError::external("failed to parse localizable string"))
-        }
     }
 }
 
@@ -118,17 +96,7 @@ impl AsJson for LocalizableString {
 
             Self::Translatable(values) => {
                 let values = values.iter()
-                    .map(|(k, v)| {
-                        let language = k.language.to_string()
-                            .to_ascii_lowercase();
-
-                        let locale = match k.region {
-                            Some(region) => format!("{language}-{}", region.as_str().to_ascii_lowercase()),
-                            None => language
-                        };
-
-                        (locale, v)
-                    })
+                    .map(|(k, v)| (lang_code(k), v))
                     .collect::<HashMap<String, &String>>();
 
                 Ok(json!(values))
@@ -166,6 +134,46 @@ impl AsJson for LocalizableString {
         }
 
         Err(AsJsonError::InvalidFieldValue("<localizable string>"))
+    }
+}
+
+impl<'lua> AsLua<'lua> for LocalizableString {
+    fn to_lua(&self, lua: &'lua Lua) -> Result<LuaValue<'lua>, AsLuaError> {
+        match self {
+            Self::Raw(string) => Ok(LuaValue::String(lua.create_string(string)?)),
+
+            Self::Translatable(translations) => {
+                let table = lua.create_table_with_capacity(0, translations.len())?;
+
+                for (lang, translation) in translations {
+                    table.set(lang.to_string(), lua.create_string(translation)?)?;
+                }
+
+                Ok(LuaValue::Table(table))
+            }
+        }
+    }
+
+    fn from_lua(value: &'lua LuaValue<'lua>) -> Result<Self, AsLuaError> where Self: Sized {
+        if let Some(translations) = value.as_table().cloned() {
+            let mut table = HashMap::new();
+
+            for pair in translations.pairs::<LuaString, LuaString>() {
+                let (lang, translation) = pair?;
+
+                let lang = lang.to_string_lossy()
+                    .parse::<LanguageIdentifier>()
+                    .map_err(|err| AsLuaError::Other(err.into()))?;
+
+                table.insert(lang, translation.to_string_lossy().to_string());
+            }
+
+            Ok(Self::Translatable(table))
+        }
+
+        else {
+            Ok(Self::Raw(value.to_string()?))
+        }
     }
 }
 

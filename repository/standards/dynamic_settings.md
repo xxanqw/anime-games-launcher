@@ -7,7 +7,7 @@ from the lua side.
 ## Settings integration format
 
 ```ts
-type DynamicSettings = {
+type DynamicSettingsManifest = {
     standard: 1,
 
     // List of the settings groups.
@@ -16,7 +16,7 @@ type DynamicSettings = {
 
 type SettingsGroup = {
     // Title of the settings group.
-    title: Localizable,
+    title?: Localizable,
 
     // Optional description added close to the title.
     description?: Localizable,
@@ -67,7 +67,7 @@ type SettingsEntryEnum = {
 ## Returned settings object format
 
 ```ts
-type SettingsValues = {
+type DynamicSettingsValues = {
     standard: 1,
 
     // Table of settings specified by the user.
