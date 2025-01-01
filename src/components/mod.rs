@@ -7,4 +7,10 @@ pub mod prelude {
     pub use super::manifest::category::ComponentCategory;
 
     pub use super::registry::Manifest as ComponentsRegistryManifest;
+
+    pub use super::engine::{
+        ComponentEngine,
+        ComponentGroup,
+        Component
+    };
 }

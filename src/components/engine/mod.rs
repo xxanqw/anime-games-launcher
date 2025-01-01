@@ -10,12 +10,12 @@ pub use v1_standard::{
 };
 
 #[derive(Debug, Clone)]
-/// Unified wrapper around game integration standards.
-pub enum GameEngine<'lua> {
+/// Unified wrapper around component integration standards.
+pub enum ComponentEngine<'lua> {
     V1(v1_standard::ComponentIntegration<'lua>)
 }
 
-impl<'lua> GameEngine<'lua> {
+impl<'lua> ComponentEngine<'lua> {
     pub fn from_lua(lua: &'lua Lua, table: &LuaTable<'lua>) -> Result<Self, LuaError> {
         match table.get::<_, u32>("standard")? {
             1 => Ok(Self::V1(v1_standard::ComponentIntegration::from_lua(lua, table)?)),
