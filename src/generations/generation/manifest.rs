@@ -95,12 +95,14 @@ impl AsHash for Manifest {
         self.format.hash()
             .chain(self.generated_at.hash())
             .chain(self.games.hash())
+            .chain(self.components.hash())
             .chain(self.lock_file.hash())
     }
 
     fn partial_hash(&self) -> Hash {
         self.format.partial_hash()
             .chain(self.games.partial_hash())
+            .chain(self.components.partial_hash())
             .chain(self.lock_file.partial_hash())
     }
 }
