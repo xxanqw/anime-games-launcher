@@ -338,13 +338,28 @@ impl SimpleAsyncComponent for MainWindow {
                 tracing::debug!(?generation, "Building new generation");
 
                 let generation = generation.build(&packages_store, &generations_store).await
-                    .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+                    .map_err(|err| anyhow::anyhow!(err.to_string()));
 
-                tracing::debug!("Indexing new generation in the store");
+                match generation {
+                    Ok(generation) => {
+                        tracing::debug!("Indexing new generation in the store");
 
-                generations_store.insert(&generation)?;
+                        generations_store.insert(&generation)?;
 
-                Ok::<_, anyhow::Error>(generation)
+                        Ok::<_, anyhow::Error>(generation)
+                    }
+
+                    // We should not spawn any GUI handler here because it's done in the other place.
+                    // There's a setting called lazy_load, and if we couldn't make a new generation
+                    // in *background* thread - we shouldn't directly notify the user about it (or should we?).
+                    // If the task is in *foreground* thread, however (when there's no generations or lazy_load = false)
+                    // then this error will be handled later and displayed in GUI dialog.
+                    Err(err) => {
+                        tracing::error!(?err, "Failed to build new generation");
+
+                        Err(err)
+                    }
+                }
             });
 
             // Resolve the generation.
@@ -383,13 +398,13 @@ impl SimpleAsyncComponent for MainWindow {
                 Ok(Err(err)) => {
                     tracing::error!(?err, "Failed to execute startup task");
 
-                    critical_error("Failed to execute startup task", err.into(), None);
+                    critical_error("Failed to execute startup task", err);
                 }
 
                 Err(err) => {
                     tracing::error!(?err, "Failed to execute startup task");
 
-                    critical_error("Failed to execute startup task", err.into(), None);
+                    critical_error("Failed to execute startup task", err);
                 }
             }
         });

@@ -11,16 +11,16 @@ pub enum GenerationError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
-    #[error("Failed to deserialize game manifest: {0}")]
+    #[error("Failed to deserialize manifest: {0}")]
     Serialize(#[from] serde_json::Error),
 
-    #[error("Failed to decode game manifest: {0}")]
+    #[error("Failed to decode manifest: {0}")]
     AsJson(#[from] AsJsonError),
 
-    #[error("Failed to download game manifest: {0}")]
+    #[error("Failed to download manifest: {0}")]
     DownloaderError(#[from] DownloaderError),
 
-    #[error("Failed to build lock file for game packages: {0}")]
+    #[error("Failed to build lock file for the generation packages: {0}")]
     LockFileError(#[from] LockFileError)
 }
 
