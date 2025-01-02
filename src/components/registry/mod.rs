@@ -41,40 +41,48 @@ impl AsJson for Manifest {
                 .and_then(LocalizableString::from_json)?,
 
             translation_components: components.get("translation")
-                .ok_or_else(|| AsJsonError::FieldNotFound("components.translation"))?
-                .as_array()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.translation"))?
-                .iter()
-                .map(|url| url.as_str().map(String::from))
-                .collect::<Option<Vec<String>>>()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.translation[]"))?,
+                .and_then(Json::as_array)
+                .map(|translation| {
+                    translation.iter()
+                        .map(|url| url.as_str().map(String::from))
+                        .collect::<Option<Vec<String>>>()
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("components.translation[]"))
+                })
+                .transpose()?
+                .unwrap_or_default(),
 
             virtualisation_components: components.get("virtualisation")
-                .ok_or_else(|| AsJsonError::FieldNotFound("components.virtualisation"))?
-                .as_array()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.virtualisation"))?
-                .iter()
-                .map(|url| url.as_str().map(String::from))
-                .collect::<Option<Vec<String>>>()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.virtualisation[]"))?,
+                .and_then(Json::as_array)
+                .map(|virtualisation| {
+                    virtualisation.iter()
+                        .map(|url| url.as_str().map(String::from))
+                        .collect::<Option<Vec<String>>>()
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("components.virtualisation[]"))
+                })
+                .transpose()?
+                .unwrap_or_default(),
 
             runtime_components: components.get("runtime")
-                .ok_or_else(|| AsJsonError::FieldNotFound("components.runtime"))?
-                .as_array()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.runtime"))?
-                .iter()
-                .map(|url| url.as_str().map(String::from))
-                .collect::<Option<Vec<String>>>()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.runtime[]"))?,
+                .and_then(Json::as_array)
+                .map(|runtime| {
+                    runtime.iter()
+                        .map(|url| url.as_str().map(String::from))
+                        .collect::<Option<Vec<String>>>()
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("components.runtime[]"))
+                })
+                .transpose()?
+                .unwrap_or_default(),
 
             general_components: components.get("general")
-                .ok_or_else(|| AsJsonError::FieldNotFound("components.general"))?
-                .as_array()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.general"))?
-                .iter()
-                .map(|url| url.as_str().map(String::from))
-                .collect::<Option<Vec<String>>>()
-                .ok_or_else(|| AsJsonError::InvalidFieldValue("components.general[]"))?
+                .and_then(Json::as_array)
+                .map(|general| {
+                    general.iter()
+                        .map(|url| url.as_str().map(String::from))
+                        .collect::<Option<Vec<String>>>()
+                        .ok_or_else(|| AsJsonError::InvalidFieldValue("components.general[]"))
+                })
+                .transpose()?
+                .unwrap_or_default()
         })
     }
 }
