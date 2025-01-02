@@ -68,6 +68,9 @@ impl Generation {
         self
     }
 
+    // TODO: fail-tolerant building + proper async use.
+    // TODO: fast rebuild method to insert one new entry and don't update other ones.
+
     /// Build new generation from provided URLs.
     ///
     /// Note: This is a heavy function which executes
@@ -83,9 +86,13 @@ impl Generation {
         // Start downloading all added games' manifests.
         let mut games_contexts = Vec::with_capacity(self.games_manifests.len());
 
+        tracing::trace!("Fetching games manifests");
+
         for url in &self.games_manifests {
             let temp_hash = Hash::rand();
             let temp_path = generations_store.get_temp_path(&temp_hash);
+
+            tracing::trace!(?url, ?temp_path, "Fetching game manifest");
 
             let context = Downloader::new(url)?
                 .with_continue_downloading(false)
@@ -102,6 +109,8 @@ impl Generation {
         for (url, temp_path, context) in games_contexts.drain(..) {
             // Await manifest download finish.
             context.wait()?;
+
+            tracing::trace!(?url, ?temp_path, "Processing game manifest");
 
             // Parse the manifest file.
             let manifest = std::fs::read(&temp_path)?;
@@ -124,9 +133,13 @@ impl Generation {
         // Start downloading all added components' manifests.
         let mut components_contexts = Vec::with_capacity(self.components_manifests.len());
 
+        tracing::trace!("Fetching components manifests");
+
         for url in &self.components_manifests {
             let temp_hash = Hash::rand();
             let temp_path = generations_store.get_temp_path(&temp_hash);
+
+            tracing::trace!(?url, ?temp_path, "Fetching component variant manifest");
 
             let context = Downloader::new(url)?
                 .with_continue_downloading(false)
@@ -143,6 +156,8 @@ impl Generation {
         for (url, temp_path, context) in components_contexts.drain(..) {
             // Await manifest download finish.
             context.wait()?;
+
+            tracing::trace!(?url, ?temp_path, "Processing components variant manifest");
 
             // Parse the manifest file.
             let manifest = std::fs::read(&temp_path)?;
@@ -161,6 +176,8 @@ impl Generation {
                 manifest
             });
         }
+
+        tracing::trace!("Building lock file for the generation");
 
         // Build the lock file for the game packages.
         let lock_file = LockFile::with_packages(packages)

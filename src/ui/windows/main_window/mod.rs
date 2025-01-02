@@ -1,12 +1,14 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use serde_json::Value as Json;
-
 use crate::prelude::*;
+
+pub mod actions;
+
+pub use actions::prelude::*;
 
 // pub mod downloads_page;
 pub mod library_page;
@@ -25,11 +27,6 @@ pub static mut WINDOW: Option<adw::ApplicationWindow> = None;
 pub enum MainWindowMsg {
     SetLoadingAction(String),
     FinishLoading(GenerationManifest),
-
-    AddGamesRegistry {
-        url: String,
-        manifest: GamesRegistryManifest
-    },
 
     AddGame {
         url: String,
@@ -52,7 +49,6 @@ pub struct MainWindow {
 
     view_stack: adw::ViewStack,
 
-    registries: HashMap<String, Arc<GamesRegistryManifest>>,
     games: HashMap<String, Arc<GameManifest>>,
 
     is_loading: bool,
@@ -219,7 +215,6 @@ impl SimpleAsyncComponent for MainWindow {
             is_loading: true,
             loading_action: None,
 
-            registries: HashMap::new(),
             games: HashMap::new(),
 
             show_search: true,
@@ -236,8 +231,7 @@ impl SimpleAsyncComponent for MainWindow {
             WINDOW = Some(widgets.window.clone());
         }
 
-        // TODO: errors handling
-        tokio::spawn(async move {
+        let task = tokio::spawn(async move {
             // Create default folders.
             tracing::debug!("Creating default folders");
 
@@ -265,99 +259,9 @@ impl SimpleAsyncComponent for MainWindow {
             {
                 let sender = sender.clone();
 
-                tokio::spawn(async move {
-                    let client = STARTUP_CONFIG.general.network.builder()?.build()?;
-
-                    let mut registries_tasks = Vec::with_capacity(STARTUP_CONFIG.games.registries.len());
-
-                    // Start fetching the registries.
-                    tracing::debug!("Fetching games registries");
-
-                    for url in STARTUP_CONFIG.games.registries.clone() {
-                        let request = client.get(&url);
-
-                        let task = tokio::spawn(async move {
-                            let response = request.send().await?
-                                .bytes().await?;
-
-                            let manifest = serde_json::from_slice::<Json>(&response)?;
-                            let manifest = GamesRegistryManifest::from_json(&manifest)?;
-
-                            Ok::<_, anyhow::Error>(manifest)
-                        });
-
-                        registries_tasks.push((url, task));
-                    }
-
-                    // Await registries fetching.
-                    let mut games = HashSet::new();
-
-                    for (url, task) in registries_tasks.drain(..) {
-                        tracing::trace!(?url, "Awaiting game registry");
-
-                        match task.await {
-                            Ok(Ok(manifest)) => {
-                                tracing::trace!(
-                                    ?url,
-                                    title = manifest.title.default_translation(),
-                                    "Added game registry"
-                                );
-
-                                for game in &manifest.games {
-                                    games.insert(game.url.clone());
-                                }
-
-                                sender.input(MainWindowMsg::AddGamesRegistry { url, manifest });
-                            }
-
-                            Err(err) => tracing::error!(?url, ?err, "Failed to await fetching game registry"),
-                            Ok(Err(err)) => tracing::error!(?url, ?err, "Failed to fetch game registry")
-                        }
-                    }
-
-                    // Start fetching games.
-                    tracing::debug!("Fetching games manifests");
-
-                    let mut games_tasks = Vec::with_capacity(games.len());
-
-                    for url in games.drain() {
-                        let request = client.get(&url);
-
-                        let task = tokio::spawn(async move {
-                            let response = request.send().await?
-                                .bytes().await?;
-
-                            let manifest = serde_json::from_slice::<Json>(&response)?;
-                            let manifest = GameManifest::from_json(&manifest)?;
-
-                            Ok::<_, anyhow::Error>(manifest)
-                        });
-
-                        games_tasks.push((url, task));
-                    }
-
-                    // Await games fetching.
-                    for (url, task) in games_tasks.drain(..) {
-                        tracing::trace!(?url, "Awaiting game manifest");
-
-                        match task.await {
-                            Ok(Ok(manifest)) => {
-                                tracing::trace!(
-                                    ?url,
-                                    title = manifest.game.title.default_translation(),
-                                    "Added game manifest"
-                                );
-
-                                sender.input(MainWindowMsg::AddGame { url, manifest });
-                            }
-
-                            Err(err) => tracing::error!(?url, ?err, "Failed to await fetching game manifest"),
-                            Ok(Err(err)) => tracing::error!(?url, ?err, "Failed to fetch game manifest")
-                        }
-                    }
-
-                    Ok::<_, anyhow::Error>(())
-                });
+                tokio::spawn(fetch_games(move |url, manifest| {
+                    sender.input(MainWindowMsg::AddGame { url, manifest });
+                }));
             }
 
             // Open generations and packages stores.
@@ -380,7 +284,6 @@ impl SimpleAsyncComponent for MainWindow {
             let mut generations = generations_store.list()?.unwrap_or_default();
 
             let mut games = None;
-            let mut components = None;
             let mut valid_generation = None;
 
             // Iterate over available generations, from newest to oldest,
@@ -404,13 +307,6 @@ impl SimpleAsyncComponent for MainWindow {
                         .collect::<Vec<_>>());
                 }
 
-                // Save the added components variants.
-                if components.is_none() {
-                    components = Some(generation.components.iter()
-                        .map(|component| component.url.clone())
-                        .collect::<Vec<_>>());
-                }
-
                 // Validate the generation.
                 tracing::debug!("Validating generation resources");
 
@@ -430,14 +326,16 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Start building the new generation with potentially updated games info.
             let new_generation_task = tokio::spawn(async move {
-                tracing::debug!("Building the new generation");
+                tracing::debug!("Fetching new components variants list from the registries");
 
-                let generation = match (games, components) {
-                    (Some(games), Some(components)) => Generation::new(games, components),
-                    (Some(games), None)             => Generation::new(games, vec![]),
-                    (None, Some(components))        => Generation::new(vec![], components),
-                    (None, None)                    => Generation::default()
+                let components = fetch_components().await?;
+
+                let generation = match games {
+                    Some(games) => Generation::new(games, components),
+                    None => Generation::new(vec![], components)
                 };
+
+                tracing::debug!(?generation, "Building new generation");
 
                 let generation = generation.build(&packages_store, &generations_store).await
                     .map_err(|err| anyhow::anyhow!(err.to_string()))?;
@@ -451,11 +349,16 @@ impl SimpleAsyncComponent for MainWindow {
 
             // Resolve the generation.
             let valid_generation = match valid_generation {
-                Some(generation) => generation,
+                Some(generation) if STARTUP_CONFIG.generations.lazy_load => generation,
 
-                // Make a new generation if no valid one was found.
-                None => {
-                    tracing::debug!("No valid generation found, awaiting the new one");
+                // Make a new generation if no valid one was found
+                // or lazy loading is disabled.
+                _ => {
+                    if STARTUP_CONFIG.generations.lazy_load {
+                        tracing::debug!("No valid generation found, awaiting the new one");
+                    } else {
+                        tracing::debug!("Generations lazy loading is disabled. Awaiting new generation to build");
+                    }
 
                     sender.input(MainWindowMsg::SetLoadingAction(String::from("Building new generation")));
 
@@ -472,6 +375,25 @@ impl SimpleAsyncComponent for MainWindow {
             Ok::<_, anyhow::Error>(())
         });
 
+        // Handle error from the above task.
+        tokio::spawn(async move {
+            match task.await {
+                Ok(Ok(())) => (),
+
+                Ok(Err(err)) => {
+                    tracing::error!(?err, "Failed to execute startup task");
+
+                    critical_error("Failed to execute startup task", err.into(), None);
+                }
+
+                Err(err) => {
+                    tracing::error!(?err, "Failed to execute startup task");
+
+                    critical_error("Failed to execute startup task", err.into(), None);
+                }
+            }
+        });
+
         AsyncComponentParts { model, widgets }
     }
 
@@ -483,10 +405,6 @@ impl SimpleAsyncComponent for MainWindow {
                 self.library_page.emit(LibraryPageInput::SetGeneration(generation));
 
                 self.is_loading = false;
-            }
-
-            MainWindowMsg::AddGamesRegistry { url, manifest } => {
-                self.registries.insert(url, Arc::new(manifest));
             }
 
             MainWindowMsg::AddGame { url, manifest } => {

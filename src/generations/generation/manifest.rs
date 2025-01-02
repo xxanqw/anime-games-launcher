@@ -2,8 +2,6 @@ use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
-// TODO: fast rebuild method to insert one new entry and don't update other ones.
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Manifest {
     /// Format of the generation.

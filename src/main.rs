@@ -129,6 +129,9 @@ async fn main() -> anyhow::Result<()> {
         gtk::glib::set_application_name("Anime Games Launcher");
         gtk::glib::set_program_name(Some("Anime Games Launcher"));
 
+        // Set relm4 runtime threads.
+        let _ = relm4::RELM_THREADS.set(8); // TODO: consider using CPU cores number here.
+
         // Set global css.
         relm4::set_global_css("
             .warning-action {
