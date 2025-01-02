@@ -5,7 +5,7 @@ use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Generations {
     pub store: GenerationsStore,
 
@@ -15,6 +15,16 @@ pub struct Generations {
     ///
     /// Default is true.
     pub lazy_load: bool
+}
+
+impl Default for Generations {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            store: GenerationsStore::default(),
+            lazy_load: true
+        }
+    }
 }
 
 impl AsJson for Generations {
