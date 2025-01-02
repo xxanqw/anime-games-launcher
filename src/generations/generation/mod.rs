@@ -50,7 +50,7 @@ impl Generation {
         }
     }
 
-    /// Change URLs to the components manifests.
+    /// Change URLs to the games manifests.
     pub fn with_games<T: ToString>(mut self, urls: impl IntoIterator<Item = T>) -> Self {
         self.games_manifests = urls.into_iter()
             .map(|url| url.to_string())

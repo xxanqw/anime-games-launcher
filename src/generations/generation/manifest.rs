@@ -2,6 +2,8 @@ use serde_json::{json, Value as Json};
 
 use crate::prelude::*;
 
+// TODO: fast rebuild method to insert one new entry and don't update other ones.
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Manifest {
     /// Format of the generation.
@@ -11,9 +13,18 @@ pub struct Manifest {
     pub generated_at: u64,
 
     /// List of games added by the user.
+    ///
+    /// These games were added from the store page and meant
+    /// to be rendered in the library page. So this is a little
+    /// subset of the whole store page.
     pub games: Vec<GameLock>,
 
-    /// List of components added by the user.
+    /// List of component variants added by the user.
+    ///
+    /// These component variants, unlike games, were added
+    /// on the launcher startup from the config file. It's
+    /// a full list of all the components from all the registries.
+    /// They are used to render profiles manager window.
     pub components: Vec<ComponentLock>,
 
     /// Lock file of the game integration packages.
