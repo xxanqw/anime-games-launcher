@@ -1,7 +1,7 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use super::*;
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CardsListInit {

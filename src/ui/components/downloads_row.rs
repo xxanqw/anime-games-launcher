@@ -3,9 +3,7 @@ use adw::prelude::*;
 use relm4::factory::*;
 use relm4::prelude::*;
 
-use crate::utils::pretty_bytes;
-
-use super::*;
+use crate::prelude::*;
 
 #[derive(Debug)]
 pub struct DownloadsRowInit {

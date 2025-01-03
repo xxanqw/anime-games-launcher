@@ -1,7 +1,7 @@
 use adw::prelude::*;
 use relm4::prelude::*;
 
-use super::*;
+use crate::prelude::*;
 
 #[derive(Debug)]
 pub struct PictureCarousel {
@@ -51,7 +51,7 @@ impl SimpleAsyncComponent for PictureCarousel {
 
                     add_css_class: "osd",
                     set_icon_name: "go-previous-symbolic",
-                    
+
                     connect_clicked => PictureCarouselMsg::NavigateLeft
                 },
 
@@ -66,7 +66,7 @@ impl SimpleAsyncComponent for PictureCarousel {
                     set_icon_name: "go-next-symbolic",
 
                     connect_clicked => PictureCarouselMsg::NavigateRight
-                } 
+                }
             }
         }
     }

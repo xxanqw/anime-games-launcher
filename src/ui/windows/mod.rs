@@ -1,26 +1,29 @@
-mod main_window;
-mod profile_manager;
-mod download_manager;
+pub mod main_window;
+pub mod profile_wizard;
+pub mod profile_manager;
+pub mod download_manager;
 
-pub use main_window::{
-    MainWindow,
-    MainWindowMsg,
-    WINDOW as MAIN_WINDOW
-};
+pub mod prelude {
+    pub use super::main_window::{
+        MainWindow,
+        MainWindowMsg,
+        WINDOW as MAIN_WINDOW
+    };
 
-pub use main_window::library_page::SyncGameCommand;
+    pub use super::main_window::library_page::SyncGameCommand;
 
-pub use profile_manager::{
-    ProfileManagerWindow,
-    ProfileManagerWindowMsg
-};
+    pub use super::profile_manager::{
+        ProfileManagerWindow,
+        ProfileManagerWindowMsg
+    };
 
-pub use profile_manager::builder::{
-    ProfileBuilderWindow,
-    ProfileBuilderWindowInput
-};
+    pub use super::profile_manager::builder::{
+        ProfileBuilderWindow,
+        ProfileBuilderWindowInput
+    };
 
-pub use download_manager::{
-    DownloadManagerWindow,
-    DownloadManagerWindowMsg
-};
+    pub use super::download_manager::{
+        DownloadManagerWindow,
+        DownloadManagerWindowMsg
+    };
+}

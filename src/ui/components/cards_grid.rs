@@ -1,6 +1,6 @@
 use relm4::prelude::*;
 
-use super::*;
+use crate::prelude::*;
 
 #[derive(Debug)]
 pub enum CardsGridOutput {
@@ -41,4 +41,3 @@ impl AsyncFactoryComponent for CardsGrid {
         }
     }
 }
-

@@ -9,8 +9,6 @@ use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 
-use super::*;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameStoreDetailsMsg {
     SetGameInfo {

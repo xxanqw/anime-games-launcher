@@ -9,8 +9,6 @@ use unic_langid::LanguageIdentifier;
 
 use crate::prelude::*;
 
-use super::*;
-
 #[derive(Debug)]
 pub enum GameLibraryDetailsMsg {
     SetGameInfo {
@@ -105,9 +103,9 @@ impl SimpleAsyncComponent for GameLibraryDetails {
                                     .map(|hint| {
                                         // FIXME: IO-heavy thing (there's around 6 update calls each time)
                                         let config = config::get();
-        
+
                                         let lang = config.general.language.parse::<LanguageIdentifier>();
-        
+
                                         match &lang {
                                             Ok(lang) => hint.translate(lang),
                                             Err(_) => hint.default_translation()

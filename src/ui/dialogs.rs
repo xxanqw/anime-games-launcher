@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::backtrace::Backtrace;
 
 use relm4::prelude::*;

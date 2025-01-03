@@ -143,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
         let app = RelmApp::new(APP_ID);
 
         // Show loading window.
-        app.run_async::<ui::windows::MainWindow>(());
+        app.run_async::<MainWindow>(());
     }
 
     Ok(())
